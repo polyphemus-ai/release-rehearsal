@@ -45,6 +45,7 @@ import {
   type SessionRuntime,
   assetPath,
   checkForUpdate,
+  compareVersions,
   knownUpdate,
   ensureWorkerImage,
 } from '@polyphemus/core';
@@ -1121,6 +1122,10 @@ async function updateCommand(polyphemus: Polyphemus, values: { check?: boolean; 
     return console.log(`polyphemus ${status.current}, run from a checkout of its repository. Update it with git, then: poly service update`);
   }
   if (!status.latest) throw new PolyphemusError(`Couldn’t find out the newest version: ${status.why ?? 'npm didn’t answer'}.`, 'FAILED');
+  // Back on stable from a beta: nothing goes backwards, so the beta stays until stable passes it.
+  if (!status.newer && compareVersions(status.current, status.latest) > 0) {
+    return console.log(green(`✓ polyphemus ${status.current} is newer than the newest ${status.channel} release (${status.latest}). It moves to ${status.channel} with the next one that’s newer.`));
+  }
   if (!status.newer) return console.log(green(`✓ polyphemus ${status.current} is the newest.`));
   if (values.check) return console.log(`polyphemus ${status.latest} is out (you have ${status.current}). Install it: poly update`);
   // A global npm install is the shape updated in place: npm's own global folder, or the one the
@@ -1131,7 +1136,7 @@ async function updateCommand(polyphemus: Polyphemus, values: { check?: boolean; 
     return console.log(`polyphemus ${status.latest} is out. This copy wasn’t installed with npm install -g, so update it the way you installed it (for example: npm install polyphemus@latest).`);
   }
   console.log(dim(`Installing polyphemus ${status.latest}…`));
-  const installed = spawnSync('npm', ['install', '-g', '--prefix', prefix, `polyphemus-rehearsal@${status.latest}`], { stdio: 'inherit' });
+  const installed = spawnSync('npm', ['install', '-g', '--prefix', prefix, '--no-fund', '--no-audit', '--no-update-notifier', '--loglevel=error', `polyphemus-rehearsal@${status.latest}`], { stdio: 'inherit' });
   if (installed.status !== 0) throw new PolyphemusError('npm couldn’t install it. If it needs permission, run the same with sudo, or set up npm to install globally without it.', 'FAILED', `npm install -g --prefix ${prefix} polyphemus@${status.latest}`);
   let active = false;
   try {

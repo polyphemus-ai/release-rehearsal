@@ -46,6 +46,12 @@ try {
   const update = JSON.parse(execFileSync(bin, ['update', '--check', '--json'], { env: { ...env, POLYPHEMUS_NPM_REGISTRY: 'http://127.0.0.1:3982' }, encoding: 'utf8' }));
   registry.kill();
   if (update.data?.installedFrom !== 'npm' || update.data?.newer !== true) fail(`the update check said ${JSON.stringify(update)}`);
+  // Ahead of its channel (back on stable from a beta): it stays, and says why, rather than "the newest".
+  const older = spawn(process.execPath, ['-e', "require('node:http').createServer((q, r) => r.end(JSON.stringify({ latest: '0.0.1' }))).listen(3983, '127.0.0.1', () => console.log('up'))"], { stdio: ['ignore', 'pipe', 'ignore'] });
+  await new Promise((r) => older.stdout.once('data', r));
+  const ahead = execFileSync(bin, ['update'], { env: { ...env, POLYPHEMUS_NPM_REGISTRY: 'http://127.0.0.1:3983' }, encoding: 'utf8' });
+  older.kill();
+  if (!ahead.includes('is newer than the newest stable release (0.0.1)')) fail(`poly update, ahead of its channel, said "${ahead.trim()}"`);
 
   const daemon = spawn(bin, ['serve'], { env, stdio: 'ignore' });
   let served;
