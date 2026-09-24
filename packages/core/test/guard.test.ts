@@ -44,6 +44,27 @@ describe('credential guard', () => {
     expect(mightReachCredentials('ls ./*.ts && find . -name "*.md"', home)).toBe(false);
   });
 
+  it('guards the vault when polyphemus’s home is reached through a link, as macOS’s temporary folders are', async () => {
+    // A link to the vault resolves to where the vault really is; the guard compared that against the
+    // home as written, so a home through a link (/var → /private/var on macOS, or a ~/.polyphemus
+    // that's a link to another disk) let it through. Found when CI first ran on macOS (2026-09-23).
+    const dir = await mkdtemp(join(tmpdir(), 'guard-linked-'));
+    const saved = process.env.POLYPHEMUS_HOME;
+    mkdirSync(join(dir, 'real', 'hh'), { recursive: true });
+    symlinkSync(join(dir, 'real'), join(dir, 'link'));
+    process.env.POLYPHEMUS_HOME = join(dir, 'link', 'hh');
+    try {
+      writeFileSync(join(dir, 'real', 'hh', 'vault.key'), 'k');
+      symlinkSync(join(dir, 'link', 'hh', 'vault.key'), join(dir, 'innocent.txt'));
+      expect(credentialPathFor(join(dir, 'innocent.txt'), home)).toBe(join(dir, 'link', 'hh', 'vault.key'));
+      // And reached by its real path, not through the link at all.
+      expect(credentialPathFor(join(dir, 'real', 'hh', 'vault.key'), home)).toBe(join(dir, 'link', 'hh', 'vault.key'));
+    } finally {
+      if (saved === undefined) delete process.env.POLYPHEMUS_HOME;
+      else process.env.POLYPHEMUS_HOME = saved;
+    }
+  });
+
   it('guards polyphemus’s own secrets wherever POLYPHEMUS_HOME is, and follows symlinks', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'guard-'));
     const saved = process.env.POLYPHEMUS_HOME;

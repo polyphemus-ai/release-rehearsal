@@ -49,7 +49,10 @@ describe('the proxy', () => {
   afterEach(() => proxy?.kill());
 
   async function startProxy(workers: Record<string, { hosts: string[]; project: string | null }>) {
-    const dir = await mkdtemp(join(tmpdir(), 'polyphemus-egress-'));
+    // A Unix socket's path is capped at 104 characters on macOS, and its temporary folder alone is
+    // about 50 (/var/folders/…/T/); the proxy's are under /sockets in a container, so only a test's
+    // are this long (found when CI first ran on macOS, 2026-09-23).
+    const dir = await mkdtemp(join(process.platform === 'darwin' ? '/tmp' : tmpdir(), 'pe-'));
     const policy = join(dir, 'policy.json');
     const sockets = join(dir, 'sockets');
     await mkdir(sockets);

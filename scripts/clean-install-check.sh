@@ -33,7 +33,8 @@ echo "--- checks ---"
 test -x "$HOME/.local/bin/poly" || { echo "FAIL: no poly command"; exit 1; }
 test -x "$HOME/.local/share/polyphemus/node/bin/node" || { echo "FAIL: Node wasn't downloaded"; exit 1; }
 V=$("$HOME/.local/bin/poly" --version) || { echo "FAIL: poly --version did not run"; exit 1; }
-WANT=$(ls /work/polyphemus-*.tgz | sed 's/.*polyphemus-//; s/\.tgz$//')
+# From inside the package, not its file name: a name with a dash in it read wrong (the rehearsal's).
+WANT=$(tar -xzOf "$(ls /work/polyphemus-*.tgz)" package/package.json | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' | head -1)
 test "$V" = "$WANT" || { echo "FAIL: version is '$V', wanted '$WANT'"; exit 1; }
 grep -q "needs git" /tmp/out.txt || { echo "FAIL: no git warning though git is missing"; exit 1; }
 grep -q "poly start" /tmp/out.txt || { echo "FAIL: didn't point at poly start"; exit 1; }

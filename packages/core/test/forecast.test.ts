@@ -114,9 +114,12 @@ describe('reading Claude Code’s own /usage', () => {
     const [session, week] = parseClaudeUsage(output, now);
     expect(session!.resetsAt!.getTime()).toBeGreaterThan(now.getTime());
     expect(week!.resetsAt!.getTime()).toBeGreaterThan(session!.resetsAt!.getTime());
+    // In the zone Claude Code names, whatever this machine's is: 1:10pm in Chicago, CDT, is 18:10 UTC.
+    expect(session!.resetsAt!.toISOString()).toBe('2026-09-12T18:10:00.000Z');
+    expect(week!.resetsAt!.toISOString()).toBe('2026-09-15T00:00:00.000Z');
     // A December reading read in January belongs to next year, not ten months ago.
     const [rolled] = parseClaudeUsage('Current session: 5% used · resets Dec 31, 9pm (UTC)', new Date('2027-01-02T00:00:00Z'));
-    expect(rolled!.resetsAt!.getFullYear()).toBe(2027);
+    expect(rolled!.resetsAt!.toISOString()).toBe('2027-12-31T21:00:00.000Z');
   });
 
   it('gives nothing rather than guessing when the shape changes', () => {

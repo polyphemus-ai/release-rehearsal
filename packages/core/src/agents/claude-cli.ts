@@ -153,21 +153,39 @@ export function parseClaudeUsage(text: string, now = new Date()): CapacityReadin
     [/^Current week \(all models\):/i, '7d'],
   ];
   for (const line of text.split('\n')) {
-    const match = /^(.+?):\s*(\d+(?:\.\d+)?)%\s*used(?:\s*·\s*resets\s*([^(]+?))?\s*(?:\(|$)/.exec(line.trim());
+    const match = /^(.+?):\s*(\d+(?:\.\d+)?)%\s*used(?:\s*·\s*resets\s*([^(]+?))?\s*(?:\(([^)]*)\)|$)/.exec(line.trim());
     if (!match) continue;
-    const [, name, pct, resets] = match;
+    const [, name, pct, resets, zone] = match;
     const known = windows.find(([pattern]) => pattern.test(`${name}:`));
     const window = known ? known[1] : name!.replace(/^Current\s+/i, '').trim();
     const reading: CapacityReading = { window, usedPct: Number(pct), observedAt: now };
-    const at = resets ? parseResetTime(resets.trim(), now) : undefined;
+    const at = resets ? parseResetTime(resets.trim(), now, zone?.trim()) : undefined;
     if (at) reading.resetsAt = at;
     readings.push(reading);
   }
   return readings;
 }
 
-/** "Sep 14, 7pm" → a Date, in this machine's zone, rolling to next year if that's already past. */
-function parseResetTime(text: string, now: Date): Date | undefined {
+/** How far a zone's clock is ahead of UTC at an instant, in milliseconds; undefined for a zone this doesn't know. */
+function zoneOffset(at: number, zone: string): number | undefined {
+  try {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-US', { timeZone: zone, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' })
+        .formatToParts(new Date(at))
+        .map((p) => [p.type, Number(p.value)]),
+    );
+    return Date.UTC(parts.year!, parts.month! - 1, parts.day!, parts.hour!, parts.minute!, parts.second!) - (at - (at % 1000));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * "Sep 14, 7pm" → a Date, rolling to next year if that's already past. In the zone Claude Code names
+ * beside it — "(America/Chicago)" — and only in this machine's zone when it names none it knows: a
+ * daemon in UTC read Chicago's 1:10pm as UTC's, hours off (found when CI first ran in UTC, 2026-09-23).
+ */
+function parseResetTime(text: string, now: Date, zone?: string): Date | undefined {
   const match = /^([A-Za-z]{3})\s+(\d{1,2}),\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i.exec(text);
   if (!match) return undefined;
   const [, month, day, hour, minute, half] = match;
@@ -176,7 +194,14 @@ function parseResetTime(text: string, now: Date): Date | undefined {
   if (monthIndex < 0) return undefined;
   let hours = Number(hour) % 12;
   if (half!.toLowerCase() === 'pm') hours += 12;
-  const at = new Date(now.getFullYear(), monthIndex, Number(day), hours, Number(minute ?? 0), 0, 0);
+  let at = new Date(now.getFullYear(), monthIndex, Number(day), hours, Number(minute ?? 0), 0, 0);
+  if (zone && zoneOffset(now.getTime(), zone) !== undefined) {
+    // The wall-clock time as if it were UTC, moved by the zone's offset, then again at the answer:
+    // across a change of clocks the offset at the reset isn't the offset now.
+    const wall = Date.UTC(now.getUTCFullYear(), monthIndex, Number(day), hours, Number(minute ?? 0));
+    const first = wall - zoneOffset(wall, zone)!;
+    at = new Date(wall - zoneOffset(first, zone)!);
+  }
   // A reset is always ahead of now; a December reading read in January would otherwise look past.
   if (at.getTime() < now.getTime() - 86_400_000) at.setFullYear(at.getFullYear() + 1);
   return at;

@@ -70,12 +70,18 @@ function realPath(path: string): string {
   }
 }
 
-/** The credential store an absolute path falls inside, if any — checked as written and as it resolves. */
+/**
+ * The credential store an absolute path falls inside, if any — checked as written and as it resolves,
+ * against each store as written and as it resolves. A path resolves to where a file really is, so a
+ * store reached through a link (a home under /var, which macOS links to /private/var, or a
+ * ~/.polyphemus that's a link to another disk) has to be known by its real path too, or a link to it
+ * gets through (2026-09-23). It's named as written.
+ */
 export function credentialPathFor(path: string, home = homedir()): string | undefined {
-  const guarded = credentialPaths(home);
+  const guarded = credentialPaths(home).flatMap((store) => [[store, store], [realPath(store), store]] as const);
   for (const candidate of new Set([normalize(path), realPath(path)])) {
-    const hit = guarded.find((g) => candidate === g || candidate.startsWith(g + sep));
-    if (hit) return hit;
+    const hit = guarded.find(([g]) => candidate === g || candidate.startsWith(g + sep));
+    if (hit) return hit[1];
     if (isEnvFile(candidate)) return candidate;
   }
   return undefined;

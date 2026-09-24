@@ -6,5 +6,7 @@ export default defineConfig({
   test: {
     // The owner is named for the fixture, not after whoever's account runs the tests.
     env: { POLYPHEMUS_CONTAINER_RUNTIME: 'off', POLYPHEMUS_OWNER_NAME: 'Alex' },
+    // Minutes on a machine without the worker image, once, before any test is timing anything.
+    globalSetup: ['packages/core/test/global-setup.ts'],
   },
 });
