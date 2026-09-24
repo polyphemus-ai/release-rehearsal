@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>polyphemus — finding your way</title>
+<!--
+  Companion to finding-your-way-brief.md. Panel A is the app as it is on 2026-09-13, with the
+  brief's problems numbered. Panels B and C are one direction to react to, not a decision.
+  Built on the app's tokens. No inline style attributes.
+-->
+<style>
+:root{
+  --ground:#edeff2; --surface:#ffffff; --well:#f2f4f6; --well-2:#e7eaee;
+  --ink:#151922; --muted:#677285; --line:#e2e6eb;
+  --accent:#2f5fe0; --accent-ink:#ffffff;
+  --attention:#d97706; --danger:#d0342c; --good:#16a34a;
+  --claude:#d9774a; --notion:#d0342c; --acme:#0f9d8a; --arcade:#2f5fe0; --polyphemus:#e08a1e;
+  --shadow:0 1px 2px rgba(21,25,34,.06), 0 8px 20px -10px rgba(21,25,34,.28);
+  --display:'Bricolage Grotesque','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --ui:'Figtree','Segoe UI',system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not(.light){
+    --ground:#0d1015; --surface:#151a21; --well:#1c222b; --well-2:#252c37;
+    --ink:#e8ecf1; --muted:#97a1b2; --line:#28303b;
+    --accent:#7096f4; --accent-ink:#0d1015;
+    --attention:#f0a13b; --danger:#f07167; --good:#4ade80;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 20px -10px rgba(0,0,0,.6);
+    color-scheme:dark;
+  }
+}
+:root.dark{
+  --ground:#0d1015; --surface:#151a21; --well:#1c222b; --well-2:#252c37;
+  --ink:#e8ecf1; --muted:#97a1b2; --line:#28303b;
+  --accent:#7096f4; --accent-ink:#0d1015;
+  --attention:#f0a13b; --danger:#f07167; --good:#4ade80;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 20px -10px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;padding-block:24px 64px;padding-inline:16px;background:var(--ground);color:var(--ink);font:14.5px/1.45 var(--ui)}
+button{font:inherit;color:inherit;cursor:pointer}
+.doc{max-width:1240px;margin:0 auto}
+.doc h1{font:700 26px/1.2 var(--display);margin:0 0 6px}
+.doc > p{color:var(--muted);max-width:70ch;margin:0 0 8px}
+.theme{float:right;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px}
+.panel{margin-top:32px}
+.panel h2{font:650 18px/1.3 var(--display);margin:0 0 4px}
+.panel > p{color:var(--muted);margin:0 0 12px;max-width:80ch}
+.scroll{overflow-x:auto;padding-bottom:6px}
+
+/* ── Frames ── */
+.desk{width:1200px;height:640px;display:grid;grid-template-columns:84px 360px 1fr;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.desk.three{grid-template-columns:84px 360px 1fr 300px}
+.phone{width:400px;max-width:100%;height:760px;background:var(--surface);border:1px solid var(--line);border-radius:28px;overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.phones{display:flex;flex-wrap:wrap;gap:24px}
+.rail{position:relative;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px}
+.logo{width:30px;height:30px;border-radius:9px;background:var(--danger);margin-bottom:10px}
+.nav{width:64px;border-radius:14px;padding:8px 0;display:grid;justify-items:center;gap:3px;font-size:11.5px;color:var(--muted)}
+.nav.on{background:var(--well);color:var(--accent);font-weight:650}
+.nav svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.col{border-right:1px solid var(--line);overflow:hidden;padding:14px 14px 0;position:relative}
+.pane{padding:16px 22px;overflow:hidden;position:relative}
+.side{border-left:1px solid var(--line);padding:14px;overflow:hidden;position:relative}
+.top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.top h3{font:650 21px/1.2 var(--display);margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.round{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;flex:none}
+.sec{margin:14px 2px 6px;font:600 11px/1 var(--ui);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}
+.sec .n{margin-left:auto}
+.row{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 4px;border-radius:12px}
+.row.on{background:var(--well)}
+.row b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:650}
+.row small{display:block;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row time{color:var(--muted);font-size:12px;align-self:start;padding-top:2px}
+.hex{width:34px;height:34px;clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0 50%);background:var(--claude)}
+.drop{width:32px;height:34px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:var(--attention)}
+.dia{width:30px;height:30px;transform:rotate(45deg);border-radius:6px;background:var(--danger);margin-left:3px}
+.sq{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:#fff;font:700 12px/1 var(--ui)}
+.sq.sm{width:20px;height:20px;border-radius:6px;font-size:9px}
+.acme{background:var(--acme)} .notion{background:var(--notion)} .arcade{background:var(--arcade)} .polyphemus{background:var(--polyphemus)}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:2px 6px;border-radius:6px;background:var(--well-2);color:var(--muted);text-transform:uppercase}
+.tag.run{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.tag.wait{background:color-mix(in srgb,var(--attention) 18%,transparent);color:var(--attention)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--attention);display:inline-block}
+.card{background:var(--well);border-radius:14px;padding:12px 14px;margin-bottom:8px}
+.card b{font-weight:650}
+.card small{color:var(--muted);display:block}
+.ask{border:1px solid var(--attention);background:color-mix(in srgb,var(--attention) 7%,var(--surface));border-radius:14px;padding:10px 12px;margin-bottom:8px}
+.ask .head{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:650}
+.ask .head .where{margin-left:auto}
+.ask p{margin:6px 0 8px;font-weight:600}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 12px;font-weight:600}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.mono{font:12.5px/1.5 ui-monospace,Menlo,monospace;color:var(--muted)}
+.bubble{background:var(--well);border-radius:14px;padding:10px 12px;margin:10px 0;max-width:70%}
+.steps .s{display:flex;gap:8px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:12px;margin-bottom:6px;font-size:13.5px}
+.ok{width:18px;height:18px;border-radius:50%;background:color-mix(in srgb,var(--good) 22%,transparent)}
+
+/* ── Callouts (panel A) ── */
+.callout{position:absolute;width:24px;height:24px;border-radius:50%;background:#e11d74;color:#fff;font:700 13px/24px var(--ui);text-align:center;box-shadow:0 0 0 3px var(--surface);z-index:3}
+.c1{top:118px;left:300px}.c2{top:190px;left:2px}.c3{top:26px;left:120px}.c4{top:14px;right:18px}.c5{top:360px;left:300px}.c6{top:292px;left:4px}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-top:12px}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.note b{display:flex;gap:8px;align-items:center}
+.note b span{width:22px;height:22px;border-radius:50%;background:#e11d74;color:#fff;font-size:12px;display:grid;place-items:center;flex:none}
+.note p{margin:4px 0 0;color:var(--muted)}
+
+/* ── The direction (panels B, C) ── */
+.view{display:flex;gap:6px;align-items:center;margin:0 0 8px}
+.view .label{font-size:12px;color:var(--muted);margin-right:2px}
+.seg{display:inline-grid;grid-auto-flow:column;background:var(--well);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:none;border-radius:8px;padding:4px 9px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:3px 6px 3px 4px;font-size:12.5px;font-weight:650}
+.chip .x{width:16px;height:16px;border-radius:50%;background:color-mix(in srgb,var(--accent) 18%,transparent);display:grid;place-items:center;font-size:11px}
+.group{display:flex;align-items:center;gap:8px;margin:12px 2px 4px;font-weight:650;font-size:13px}
+.group .n{margin-left:auto;color:var(--muted);font-weight:500;font-size:12px}
+.group .open{color:var(--accent);font-weight:600;font-size:12px}
+.crumb{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);margin-bottom:8px}
+.crumb a{color:var(--accent);font-weight:600;text-decoration:none}
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--well);border-radius:12px;padding:4px;gap:4px;margin:6px 0 10px}
+.tabs button{border:0;background:none;border-radius:9px;padding:7px 4px;font-weight:650;font-size:13.5px;color:var(--muted)}
+.tabs button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px}
+.why{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:10px 12px;margin-top:12px;color:var(--muted);font-size:13.5px}
+.why b{color:var(--ink)}
+.phone .col{border:0;flex:1;padding:14px 16px 0}
+.tabbar{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);padding:6px 0 10px}
+.tabbar .nav{width:auto}
+.label-under{font-size:12.5px;color:var(--muted);margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+<div class="doc">
+  <button class="theme" id="theme" type="button">Light / dark</button>
+  <h1>Finding your way</h1>
+  <p>Companion to <b>finding-your-way-brief.md</b>. Panel A is the app today, with the brief’s six problems numbered. Panels B and C sketch <b>one direction to react to</b>: a view control on the list, a project you can stay “in”, a project page with tabs, and a settings icon for Setup. They aren’t decisions.</p>
+
+  <!-- ═════════════ A: today ═════════════ -->
+  <section class="panel">
+    <h2>A · Today, at 1200px</h2>
+    <p>Watching <i>Ship issue #3</i>. The list is every thread in every project, newest first.</p>
+    <div class="scroll">
+      <div class="desk three">
+        <nav class="rail">
+          <div class="logo"></div>
+          <div class="nav on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+          <div class="nav" id="setup-now"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Setup</div>
+          <span class="callout c6">6</span>
+        </nav>
+        <div class="col">
+          <span class="callout c3">3</span>
+          <div class="top"><h3>Home</h3><span class="round">⌕</span><span class="round">+</span></div>
+          <div class="sec">Waiting on you</div>
+          <small class="mono">Nothing is waiting on you.</small>
+          <div class="sec">Today</div>
+          <span class="callout c1">1</span>
+          <span class="callout c2">2</span>
+          <div class="row on"><div class="hex"></div><div><b>Ship issue #3 <span class="tag run">Running</span></b><small>Acme Website · run 1 · step 5 of 5</small></div><time>1m</time></div>
+          <div class="row"><div class="hex"></div><div><b>Orientation: Acme Website</b><small>Acme Website · I opened issue #3…</small></div><time>7m</time></div>
+          <div class="row"><div class="hex"></div><div><b>Feedback: Contact form sends nothing</b><small>Acme Website · Feedback from Alex, waiting…</small></div><time>9m</time></div>
+          <div class="row"><div class="drop"></div><div><b>Rowan and Otter</b><small>gamenight · Rowan: Ah, that explains it!</small></div><time>3h</time></div>
+          <div class="sec">Yesterday</div>
+          <span class="callout c5">5</span>
+          <div class="row"><div class="drop"></div><div><b>Otter</b><small>polyphemus · I can’t send it. Nothing I have…</small></div><time>14h</time></div>
+          <div class="row"><div class="drop"></div><div><b>@Otter … can you create</b><small>Notion Documentation · Rowan: The Notion p…</small></div><time>14h</time></div>
+          <div class="row"><div class="dia"></div><div><b>Rowan</b><small>polyphemus · That’s it — a map! Want one…</small></div><time>16h</time></div>
+          <div class="row"><div class="hex"></div><div><b>just chat</b><small>polyphemus · Sure, happy to just chat.</small></div><time>1d</time></div>
+          <div class="row"><div class="hex"></div><div><b>Add a dark mode to exports</b><small>Reports · work item · not started</small></div><time>1d</time></div>
+        </div>
+        <div class="pane">
+          <div class="top"><div class="hex"></div><h3>Ship issue #3</h3></div>
+          <small class="mono">On claude-code:claude-opus-5 · Acme Website · YOLO</small>
+          <div class="bubble">Polyphemus’s instructions for Round 1 · Build</div>
+          <div class="bubble">Deleted docs/AWS-DEPLOY.md and pointed the design brief at Amplify. Committed.</div>
+        </div>
+        <aside class="side">
+          <span class="callout c4">4</span>
+          <b>Work</b>
+          <div class="card"><b>Ship issue #3</b> <span class="tag run">Running</span><small>Run 1 · step 5 of 5</small></div>
+          <div class="steps">
+            <div class="s"><span class="ok"></span>Read the issue</div>
+            <div class="s"><span class="ok"></span>Make a worktree</div>
+            <div class="s"><span class="ok"></span>Plan</div>
+            <div class="s"><span class="ok"></span>Run the plan’s checks?</div>
+            <div class="s">5 · Round 1 · Build <span class="tag run">Running</span></div>
+          </div>
+          <p class="mono">To change a grant: Projects → Acme Website → scroll past people, agents and three grants’ tool lists…</p>
+        </aside>
+      </div>
+    </div>
+    <div class="notes">
+      <div class="note"><b><span>1</span>One list, nothing groups it</b><p>Three projects are mixed together. The project is grey text on line two.</p></div>
+      <div class="note"><b><span>2</span>Marks don’t tell rows apart</b><p>Threads without an agent show their model’s mark. Most run on Claude, so most rows lead with the same orange hexagon.</p></div>
+      <div class="note"><b><span>3</span>Going to a project loses your place</b><p>Tapping Projects replaces this column. Coming back, the list has moved on, and nothing says which project you were in.</p></div>
+      <div class="note"><b><span>4</span>Configuring means a long trip</b><p>The run is here, and its project’s grants are four screens away, below everything else on the project page.</p></div>
+      <div class="note"><b><span>5</span>It will get busier</b><p>Incoming requests, work items from an intake and orientation threads all land in this same list.</p></div>
+      <div class="note"><b><span>6</span>Setup looks like “you”</b><p>A person icon, next to Team, which is also people. Setup is settings.</p></div>
+    </div>
+  </section>
+
+  <!-- ═════════════ B: the direction, desktop ═════════════ -->
+  <section class="panel">
+    <h2>B · One direction, at 1200px: arrange the list, stay in a project</h2>
+    <p>A <b>View</b> control on Home groups the same list by time, project or agent. Here it’s grouped by project. Opening a project from a group, or from Projects, puts a <b>project chip</b> on the list, so Home stays filtered to it until you clear it. The thread pane says where you are and gets you to the project’s setup in one tap.</p>
+    <div class="scroll">
+      <div class="desk">
+        <nav class="rail">
+          <div class="logo"></div>
+          <div class="nav on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Setup</div>
+        </nav>
+        <div class="col">
+          <div class="top"><h3>Home</h3><span class="round">⌕</span><span class="round">+</span></div>
+          <div class="view"><span class="label">View</span><div class="seg"><button aria-pressed="false">Time</button><button aria-pressed="true">Project</button><button aria-pressed="false">Agent</button></div></div>
+          <div class="sec">Waiting on you <span class="n">1</span></div>
+          <div class="ask"><div class="head"><span class="sq sm acme">OE</span>Ship issue #3<span class="where tag">Acme website</span></div><p>Merge pull request #4 into develop?</p><button class="btn primary">Allow</button> <button class="btn">Send back</button></div>
+          <div class="group"><span class="sq sm acme">OE</span>Acme Website <span class="n">3</span><span class="open">Open</span></div>
+          <div class="row on"><div class="hex"></div><div><b>Ship issue #3 <span class="tag wait">Waiting</span></b><small>run 1 · step 12 · gate</small></div><time>now <span class="dot"></span></time></div>
+          <div class="row"><div class="hex"></div><div><b>Orientation: Acme Website</b><small>I opened issue #3…</small></div><time>7m</time></div>
+          <div class="row"><div class="hex"></div><div><b>Feedback: Contact form sends nothing</b><small>Feedback from Alex</small></div><time>9m</time></div>
+          <div class="group"><span class="sq sm arcade">B</span>gamenight <span class="n">1</span><span class="open">Open</span></div>
+          <div class="row"><div class="drop"></div><div><b>Rowan and Otter</b><small>Rowan: Ah, that explains it!</small></div><time>3h</time></div>
+          <div class="group"><span class="sq sm notion">ND</span>Notion Documentation <span class="n">1</span><span class="open">Open</span></div>
+          <div class="row"><div class="drop"></div><div><b>@Otter … can you create</b><small>Rowan: The Notion p…</small></div><time>14h</time></div>
+          <div class="group"><span class="sq sm polyphemus">H</span>polyphemus <span class="n">3 · show</span></div>
+        </div>
+        <div class="pane">
+          <div class="crumb"><span class="sq sm acme">OE</span><a href="#c">Acme Website</a> › Ship issue #3 · <a href="#c">Its setup</a></div>
+          <div class="top"><div class="hex"></div><h3>Ship issue #3</h3></div>
+          <div class="bubble">Deleted docs/AWS-DEPLOY.md and pointed the design brief at Amplify. Committed.</div>
+          <div class="why"><b>Journey 2.</b> “Its setup” opens the project’s Setup tab (panel C) in this pane, and Back returns here. The list column never changes, so the run stays where you left it.</div>
+          <div class="why"><b>Open questions for the designer:</b> does View persist per device? Where does a thread with no project go (a “No project” group last)? And under Agent, where does a thread with three agents sit?</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════ C: phone ═════════════ -->
+  <section class="panel">
+    <h2>C · The same direction at 400px: in one project, and its page with tabs</h2>
+    <p>Left: Home filtered to one project, with a chip that says so and clears it (journey 3). Right: the project page split into <b>Work · Conversations · Setup</b>, like Setup’s own tabs (journey 5). Setup holds people, agents, what it can reach, rules and memory, and the folder.</p>
+    <div class="phones">
+      <div>
+        <div class="phone">
+          <div class="col">
+            <div class="top"><h3>Home</h3><span class="round">⌕</span><span class="round">+</span></div>
+            <div class="view"><span class="chip"><span class="sq sm acme">OE</span>Acme Website<span class="x">✕</span></span></div>
+            <div class="sec">Waiting on you <span class="n">1</span></div>
+            <div class="ask"><div class="head"><span class="sq sm acme">OE</span>Ship issue #3</div><p>Merge pull request #4 into develop?</p><button class="btn primary">Allow</button> <button class="btn">Send back</button></div>
+            <div class="sec">Work</div>
+            <div class="row"><div class="hex"></div><div><b>Ship issue #3 <span class="tag wait">Waiting</span></b><small>run 1 · step 12 · gate</small></div><time>now <span class="dot"></span></time></div>
+            <div class="row"><div class="hex"></div><div><b>Hide the contact form</b><small>work item · not started</small></div><time>2m</time></div>
+            <div class="sec">Conversations</div>
+            <div class="row"><div class="hex"></div><div><b>Orientation: Acme Website</b><small>I opened issue #3…</small></div><time>7m</time></div>
+            <div class="row"><div class="hex"></div><div><b>Feedback: Contact form sends nothing</b><small>Feedback from Alex</small></div><time>9m</time></div>
+            <p class="mono">Showing 4 of 38 threads. Clear the chip to see all of them.</p>
+          </div>
+          <div class="tabbar">
+            <div class="nav on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+            <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+            <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+            <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Setup</div>
+          </div>
+        </div>
+        <div class="label-under">Home, in one project</div>
+      </div>
+      <div>
+        <div class="phone" id="c">
+          <div class="col">
+            <div class="top"><span class="round">‹</span><h3>Acme Website</h3></div>
+            <div class="tabs"><button aria-pressed="false">Work</button><button aria-pressed="false">Conversations</button><button aria-pressed="true">Setup</button></div>
+            <div class="sec">What it can reach <span class="n">3</span></div>
+            <div class="card"><b>GitHub Builder</b> <span class="tag">Working</span><small>9 tools, 2 that change things · Change</small></div>
+            <div class="card"><b>GitHub Planner</b> <span class="tag">Working</span><small>10 tools, 3 that change things · Change</small></div>
+            <div class="card"><b>GitHub Reviewer</b> <span class="tag">Working</span><small>9 tools, 2 that change things · Change</small></div>
+            <div class="sec">Rules and memory</div>
+            <div class="card"><b>Rules</b><small>AGENTS.md · every agent here reads it first</small></div>
+            <div class="card"><b>Review</b><small>Nothing proposed</small></div>
+            <div class="sec">People · Agents · Folder</div>
+            <div class="card"><small>Alex (owns this install) · no agents yet · ~/projects/acme-website</small></div>
+          </div>
+          <div class="tabbar">
+            <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+            <div class="nav on"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+            <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+            <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Setup</div>
+          </div>
+        </div>
+        <div class="label-under">A project’s Setup tab. Work is its first tab once it’s set up; before that, Setup is.</div>
+      </div>
+    </div>
+    <div class="why"><b>What this direction assumes, for the designer to accept or overturn:</b> grouping and filtering reuse the one Home list and row, so §2’s “same list, same row” still holds. Tool names collapse to a count with a way to open them. Work and Conversations on a project are the Home list with the chip applied, not a second list. The tab bar icon for Setup is sliders, not a person.</div>
+  </section>
+</div>
+<script>
+  // Preview chrome only: flip light and dark.
+  document.getElementById('theme').addEventListener('click', () => {
+    const root = document.documentElement;
+    const dark = root.classList.contains('dark') || (!root.classList.contains('light') && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.classList.toggle('dark', !dark);
+    root.classList.toggle('light', dark);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+polyphemus
+Copyright 2026 The polyphemus contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes two fonts, each under the SIL Open Font License 1.1, with their licenses beside them in
+daemon/web/fonts:
+- Figtree, Copyright 2022 The Figtree Project Authors (https://github.com/erikdkennedy/figtree)
+- Bricolage Grotesque, Copyright 2022 The Bricolage Grotesque Project Authors
+  (https://github.com/ateliertriay/bricolage)

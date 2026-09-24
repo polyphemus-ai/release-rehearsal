@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="en" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>polyphemus — proposed UI, second pass</title>
+<!--
+  Second pass, folding in the addendum: multiplayer, connections as first-class, permissions
+  at three scopes, and work above conversations. Built on the tokens and class names from
+  polyphemus-current-ui.html. No inline style attributes (CSP). #mockup-css is preview chrome only.
+-->
+<style id="app-css">
+:root{
+  --ground:#edeff2; --surface:#ffffff; --well:#f2f4f6; --well-2:#e7eaee;
+  --ink:#151922; --muted:#677285; --line:#e2e6eb;
+  --accent:#2f5fe0; --accent-ink:#ffffff;
+  --attention:#d97706; --danger:#d0342c; --good:#16a34a;
+  --shadow:0 1px 2px rgba(21,25,34,.06), 0 8px 20px -10px rgba(21,25,34,.28);
+  --display:'Bricolage Grotesque','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --ui:'Figtree','Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,'SFMono-Regular','JetBrains Mono',Menlo,monospace;
+  color-scheme:light;
+}
+html.dark{
+  --ground:#0d1015; --surface:#151a21; --well:#1c222b; --well-2:#252c37;
+  --ink:#e8ecf1; --muted:#97a1b2; --line:#28303b;
+  --accent:#7096f4; --accent-ink:#0d1015;
+  --attention:#f0a13b; --danger:#f07167; --good:#4ade80;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 20px -10px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+button,select,textarea,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none !important}
+
+/* ── Top bar ─────────────────────────────────────────────────────── */
+.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:10px 14px 8px;background:var(--surface)}
+.bar-mid{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+.bar-side{display:flex;gap:8px}
+.screen-title{font:600 17px/1.2 var(--display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.round{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;padding:0;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.round.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.brand{display:flex;align-items:center;gap:8px;border:0;background:none;padding:4px;font:700 21px/1 var(--display);letter-spacing:-.01em}
+.brand svg{width:28px;height:28px}
+.live{width:8px;height:8px;border-radius:50%;background:var(--good)}
+.pill{display:flex;align-items:center;gap:8px;min-width:0;background:var(--well);border:1px solid var(--line);border-radius:999px;padding:4px 12px 4px 5px;font-weight:650}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ico.mini{width:15px;height:15px}
+.main{padding:2px 16px 96px}
+.main.plain{padding-bottom:32px}
+.main.with-composer{padding-bottom:120px}
+
+/* ── Lists ───────────────────────────────────────────────────────── */
+.sec{margin:20px 4px 6px;display:flex;align-items:center;gap:8px;font:600 11.5px/1 var(--ui);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.sec:first-child{margin-top:8px}
+.sec .count{margin-left:auto;font-variant-numeric:tabular-nums}
+.sec .linky{margin-left:auto;text-transform:none;letter-spacing:0}
+.list{display:grid}
+.row{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:10px 4px;border-radius:14px}
+button.row:hover{background:var(--well)}
+.row-main{display:grid;gap:2px;min-width:0}
+.row-top{display:flex;align-items:baseline;gap:8px;min-width:0}
+.row-top b{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-top time,.row-top .right{margin-left:auto;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.row-sub{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;min-width:0}
+.row-sub .text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.tag{flex:none;font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--well);color:var(--muted);white-space:nowrap}
+.dot{flex:none;width:9px;height:9px;border-radius:50%}
+.dot.needs{background:var(--attention);box-shadow:0 0 0 3px color-mix(in srgb,var(--attention) 22%,transparent)}
+.dot.working{background:var(--accent);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.3}}
+.linky{background:none;border:0;color:var(--accent);font:600 14px/1 var(--ui);padding:8px 4px;justify-self:start}
+.hint{color:var(--muted);font-size:13.5px;margin:10px 4px 0}
+.row-top .state{flex:none;font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:3px}
+.row-top .state svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.row.done .row-top b{font-weight:550;color:var(--muted)}
+.row.done .marks{opacity:.62}
+.marks{position:relative;width:44px;height:44px;flex:none}
+.marks svg{position:absolute;inset:0;width:44px;height:44px}
+.marks.two svg:first-child{width:30px;height:30px;top:0;left:0}
+.marks.two svg:last-child{width:30px;height:30px;top:14px;left:14px}
+.marks.three svg:nth-child(1){width:26px;height:26px;top:0;left:9px}
+.marks.three svg:nth-child(2){width:26px;height:26px;top:17px;left:0}
+.marks.three svg:nth-child(3){width:26px;height:26px;top:17px;left:18px}
+.marks.small,.marks.small svg{width:26px;height:26px}
+.marks.tiny,.marks.tiny svg{width:20px;height:20px}
+
+/* NEW — a person. Round, initials, never a shape: only agents get marks. */
+.face{width:44px;height:44px;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--well-2);color:var(--muted);font:650 15px/1 var(--ui)}
+.face.sm{width:26px;height:26px;font-size:11px}
+.face.xs{width:20px;height:20px;font-size:9.5px}
+.face.me{background:var(--accent);color:var(--accent-ink)}
+.faces{display:flex;align-items:center}
+.faces>*+*{margin-left:-8px;box-shadow:0 0 0 2px var(--surface)}
+
+/* NEW — factual status. One word, from what happened, never from what an agent said. */
+.st{font-size:11.5px;font-weight:700;letter-spacing:.03em;padding:2px 8px;border-radius:999px;white-space:nowrap;flex:none;text-transform:uppercase}
+.st.queued{background:var(--well-2);color:var(--muted)}
+.st.running{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
+.st.waiting{background:color-mix(in srgb,var(--attention) 16%,transparent);color:var(--attention)}
+.st.retrying{background:color-mix(in srgb,var(--attention) 16%,transparent);color:var(--attention)}
+.st.failed{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger)}
+.st.interrupted{background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger)}
+.st.done{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+
+/* ── Cards that need you ─────────────────────────────────────────── */
+.ask{background:var(--well);border:1px solid color-mix(in srgb,var(--attention) 50%,var(--line));border-radius:18px;padding:14px;display:grid;gap:10px;margin-bottom:10px}
+.ask-head{display:flex;align-items:center;gap:8px;min-width:0;background:none;border:0;padding:0;text-align:left;font-size:14px;width:100%}
+.ask-head b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ask-head .tag{margin-left:auto;background:var(--surface)}
+.ask p{margin:0;font-weight:600}
+.ask code{font:13px/1.45 var(--mono);background:var(--surface);border-radius:9px;padding:7px 9px;overflow-wrap:anywhere;white-space:pre-wrap}
+.ask .cost{margin:0;font-weight:400;font-size:13.5px;color:var(--muted)}
+.ask.calm{border-color:var(--line)}
+.ask.taken{border-color:var(--line);opacity:.92}
+/* NEW — who else can act on this, and who has it. */
+.claim{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);font-weight:600}
+.claim b{color:var(--ink)}
+.buttons{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 15px;font-weight:600;font-size:14.5px;min-height:44px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--danger)}
+.btn.wide{width:100%}
+.btn.small{padding:7px 11px;font-size:13.5px;min-height:0;white-space:nowrap}
+.btn.ghost{background:none}
+.btn:disabled{opacity:.5}
+
+/* ── Grouped cards ───────────────────────────────────────────────── */
+.card{background:var(--well);border-radius:18px;overflow:hidden}
+.card+.card{margin-top:12px}
+.item{display:flex;align-items:center;gap:12px;padding:13px 14px;width:100%;border:0;background:none;text-align:left;font-size:15px;min-height:52px}
+.item+.item{border-top:1px solid var(--line)}
+.item .grow{flex:1;min-width:0;display:grid;gap:1px}
+.item small{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.item .value{color:var(--muted);font-size:14px;text-align:right;flex:none}
+.item .chev{color:var(--muted);flex:none}
+.item.warn .value{color:var(--attention);font-weight:600}
+.item.bad .value{color:var(--danger);font-weight:600}
+.path{font:12.5px/1.4 var(--mono);color:var(--muted);overflow-wrap:anywhere}
+.squircle{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;color:#fff;font:700 16px/1 var(--display);flex:none}
+
+/* ── A conversation ──────────────────────────────────────────────── */
+.thread-state{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 4px 10px;font-size:13.5px;color:var(--muted)}
+.thread-state .bullet{width:3px;height:3px;border-radius:50%;background:var(--muted);flex:none}
+.thread-state .warnish{color:var(--attention);font-weight:600}
+.msg{max-width:88%;padding:10px 14px;border-radius:20px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15.5px;line-height:1.45}
+.msg.you{justify-self:end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:6px}
+.msg.bot{justify-self:start;background:var(--well);border-bottom-left-radius:6px}
+.msg.them{justify-self:start;background:var(--well-2);border-bottom-left-radius:6px}
+.speaker{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);padding:0 6px;justify-self:start}
+.speaker b{color:var(--ink);font-weight:650}
+.speaker .lead{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.aside-msg{justify-self:stretch;margin-left:22px;border-left:2px solid var(--line);padding:2px 0 2px 12px;display:grid;gap:4px}
+.aside-msg .who{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.aside-msg .who b{color:var(--ink);font-weight:650}
+.aside-msg .what{font-size:14.5px}
+.activity{border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.activity summary{list-style:none;cursor:pointer;display:flex;align-items:flex-start;gap:8px;padding:9px 12px;color:var(--muted);font-size:13.5px}
+.activity summary::-webkit-details-marker{display:none}
+.activity .sum-text{flex:1;min-width:0;display:grid;gap:1px}
+.activity .what{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:500}
+.activity-body{display:grid;gap:6px;padding:8px 10px 10px;border-top:1px solid var(--line)}
+.tool{font:13px/1.4 var(--mono);color:var(--muted);overflow-wrap:anywhere;margin:0}
+.tool b{color:var(--ink);font-weight:500}
+.day{justify-self:center;font-size:12px;font-weight:600;color:var(--muted);background:var(--well);border-radius:999px;padding:3px 11px;margin:10px 0 2px}
+.info{color:var(--muted);font-size:13px;padding:0 6px;text-align:center}
+.log{display:grid;gap:10px;padding-top:4px}
+.composer{display:flex;align-items:flex-end;gap:8px;padding:8px 12px 12px;background:var(--surface);border-top:1px solid var(--line)}
+.composer label{flex:1;min-width:0;display:flex;background:var(--well);border-radius:22px;padding:4px 14px}
+.composer textarea{flex:1;min-width:0;border:0;background:none;resize:none;font-size:16px;line-height:1.4;padding:8px 0}
+
+/* NEW — the outcome strip. A thread that is tracking an outcome wears this; a chat doesn't. */
+.outcome{background:var(--well);border:1px solid var(--line);border-radius:18px;padding:13px 14px;display:grid;gap:9px;margin:4px 0 8px}
+.outcome-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.outcome-top b{font:600 16px/1.25 var(--display);flex:1;min-width:0}
+.outcome .where{font-size:13px;color:var(--muted)}
+.outcome-bar{display:flex;gap:4px}
+.outcome-bar i{height:5px;flex:1;border-radius:3px;background:var(--well-2)}
+.outcome-bar i.ok{background:var(--good)}
+.outcome-bar i.now{background:var(--attention)}
+.outcome-foot{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13.5px;color:var(--muted)}
+.outcome-foot .linky{padding:0}
+
+/* NEW — a run's steps. */
+.steps{display:flex;flex-direction:column;gap:10px}
+.step{display:grid;grid-template-columns:32px minmax(0,1fr);gap:4px 12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:13px}
+.step-n{grid-row:span 3;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--well);color:var(--accent);font:600 14px/1 var(--mono)}
+.step.done .step-n{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+.step.gate{border-color:color-mix(in srgb,var(--attention) 55%,var(--line))}
+.step.gate .step-n{background:color-mix(in srgb,var(--attention) 16%,transparent);color:var(--attention)}
+.step.failed{border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
+.step.failed .step-n{background:color-mix(in srgb,var(--danger) 13%,transparent);color:var(--danger)}
+.step.todo{opacity:.55}
+.step-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.step-head b{font:600 15.5px/1.3 var(--ui)}
+.step-body{display:grid;gap:6px;min-width:0}
+.step-body small{color:var(--muted);font-size:13.5px}
+.step-link{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--accent);font-weight:600;background:none;border:0;padding:0;justify-self:start}
+
+/* NEW — evidence. What was produced, and whether anything outside polyphemus confirms it. */
+.evi{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--well);border-radius:12px;font-size:13.5px}
+.evi+.evi{margin-top:6px}
+.evi .grow{flex:1;min-width:0;display:grid;gap:1px}
+.evi small{color:var(--muted);font-size:12.5px}
+.evi .ico{color:var(--muted)}
+.receipt{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good);flex:none}
+.receipt.none{background:var(--well-2);color:var(--muted)}
+.claimed-line{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--muted);padding:2px 4px}
+.claimed-line b{color:var(--ink)}
+
+/* NEW — grants: what may happen, separate from whether it asks first. */
+.grant{display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:14.5px}
+.grant+.grant{border-top:1px solid var(--line)}
+.grant .grow{flex:1;min-width:0;display:grid;gap:2px}
+.grant small{color:var(--muted);font-size:12.5px}
+.grant .from{font-size:12px;color:var(--muted);font-style:italic}
+.scope{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--muted);background:var(--well-2);border-radius:6px;padding:2px 7px}
+.ceiling{font-size:12.5px;color:var(--muted);padding:10px 14px;background:var(--well-2)}
+
+/* ── Tabs ────────────────────────────────────────────────────────── */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:var(--surface);padding:6px 6px 10px}
+.tabs button{border:0;background:none;display:grid;justify-items:center;gap:3px;padding:6px 0;font-size:12px;font-weight:600;color:var(--muted);position:relative}
+.tabs button[aria-current='page']{color:var(--accent)}
+.tabs .badge{position:absolute;top:2px;left:calc(50% + 6px);min-width:17px;height:17px;border-radius:9px;background:var(--attention);color:#fff;font:700 10.5px/17px var(--ui);padding:0 4px}
+
+/* ── Forms ───────────────────────────────────────────────────────── */
+.field{display:grid;gap:6px;margin:14px 0}
+.field>span{font-size:13px;font-weight:600;color:var(--muted);padding-left:4px}
+.field select,.field input{width:100%;border:1px solid var(--line);background:var(--well);border-radius:14px;padding:12px 14px;font-size:16px}
+.segmented{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;background:var(--well);border-radius:14px;padding:4px}
+.segmented button{border:0;background:none;border-radius:10px;padding:9px 6px;font-weight:600;font-size:14px}
+.segmented button[aria-pressed='true']{background:var(--surface);box-shadow:var(--shadow)}
+.segmented button.yolo[aria-pressed='true']{background:var(--danger);color:#fff}
+.role{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 10px;font-size:13px;font-weight:600}
+
+/* ── Desktop ─────────────────────────────────────────────────────── */
+.desk{display:grid;grid-template-columns:86px 24rem minmax(0,1fr);align-items:start;background:var(--surface)}
+.desk .rail-inner{height:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px 16px;border-right:1px solid var(--line)}
+.desk .rail-inner>button:not(.rail-brand){width:100%;border:0;background:none;border-radius:14px;padding:9px 0;display:grid;justify-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--muted);position:relative}
+.desk .rail-inner>button[aria-current='page']{background:var(--well-2);color:var(--accent)}
+.desk .rail-brand{background:none;border:0;padding:6px;margin-bottom:10px;display:grid;place-items:center}
+.desk .rail-inner .badge{position:absolute;top:4px;left:calc(50% + 6px);min-width:17px;height:17px;border-radius:9px;background:var(--attention);color:#fff;font:700 10.5px/17px var(--ui);padding:0 4px}
+.desk .side{border-right:1px solid var(--line);overflow:hidden}
+.desk .row{padding:8px 8px}
+.desk .row[aria-current='true']{background:var(--well-2)}
+.desk .detail{border-left:1px solid var(--line)}
+.desk-cols{display:grid;grid-template-columns:minmax(0,1fr) 21rem}
+</style>
+
+<style id="mockup-css">
+body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.5 var(--ui)}
+.preview{position:sticky;top:0;z-index:50;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#101318;color:#fff;font-size:12.5px}
+.preview strong{font:700 13px/1 var(--display)}
+.preview .sep{width:1px;height:18px;background:#2b313a}
+.preview button{background:#20252d;border:1px solid #2f3641;color:#d7dce3;padding:5px 10px;border-radius:999px;font-size:12.5px}
+.preview button[aria-pressed='true']{background:#fff;color:#101318;border-color:#fff}
+.preview span.note{color:#8b94a2}
+.stage{padding:26px 16px 80px;display:flex;justify-content:center}
+.screen[hidden]{display:none}
+.phone{width:400px;max-width:100%;min-height:840px;background:var(--surface);border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.phone .main{flex:1}
+.deskframe{width:1200px;max-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.caption{max-width:400px;margin:0 auto 14px;color:var(--muted);font-size:13.5px}
+.caption.after{margin-top:14px}
+.caption b{color:var(--ink)}
+.wide-caption{max-width:1200px}
+.annot{display:grid;gap:2px;margin:2px 4px 12px;padding:10px 12px;border-left:2px solid var(--accent);background:var(--well);border-radius:0 12px 12px 0;font-size:13px;color:var(--muted)}
+.annot b{color:var(--ink);font-weight:650;font-size:13.5px}
+.stack-two{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+.mk{stroke-width:4;stroke-linejoin:round}
+.mk .bar-fill{fill:#fff;stroke:none}
+.c-blue{fill:#3E7BFA;stroke:#3E7BFA}
+.c-violet{fill:#8A5CF6;stroke:#8A5CF6}
+.c-teal{fill:#0F9F90;stroke:#0F9F90}
+.c-amber{fill:#E98A12;stroke:#E98A12}
+.c-green{fill:#1FA37A;stroke:#1FA37A}
+.c-slate{fill:#5B6475;stroke:#5B6475}
+.sq-polyphemus{background:#3E7BFA}.sq-arcade{background:#E98A12}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" aria-hidden="true" focusable="false"><defs>
+  <symbol id="m-hex" viewBox="0 0 48 48"><path d="M24 3.5 42 14v20L24 44.5 6 34V14z"/><rect x="15" y="18" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+  <symbol id="m-diamond" viewBox="0 0 48 48"><path d="M24 3.5 44.5 24 24 44.5 3.5 24z"/><rect x="15" y="18" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+  <symbol id="m-circle" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20.5"/><rect x="15" y="18" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+  <symbol id="m-cloud" viewBox="0 0 48 48"><path d="M14 39a10 10 0 0 1-.7-20 12.5 12.5 0 0 1 23.2 2.1A9 9 0 0 1 34.5 39z"/><rect x="15" y="24" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+  <symbol id="m-pill" viewBox="0 0 48 48"><rect x="6" y="10" width="36" height="28" rx="14"/><rect x="15" y="21" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+</defs></svg>
+
+<div class="preview">
+  <strong>polyphemus — second pass</strong>
+  <span class="sep"></span>
+  <button data-go="home" aria-pressed="true">Home</button>
+  <button data-go="work" aria-pressed="false">Work item &amp; run</button>
+  <button data-go="promote" aria-pressed="false">Chat → work</button>
+  <button data-go="connections" aria-pressed="false">Connections</button>
+  <button data-go="project" aria-pressed="false">Project · 2 people</button>
+  <button data-go="agent" aria-pressed="false">Agent · grants</button>
+  <button data-go="desktop" aria-pressed="false">Desktop</button>
+  <span class="sep"></span>
+  <button id="theme">Dark</button>
+  <span class="note">preview chrome, not part of the app</span>
+</div>
+
+<div class="stage">
+
+<!-- ══════════════════════════════ HOME ══════════════════════════════ -->
+<section class="screen" data-screen="home">
+  <div>
+    <p class="caption"><b>Home, with other people in it.</b> Still one list. Waiting on you now shows who else can act and who has taken it, and a broken connection is an item like any other.</p>
+    <div class="phone">
+      <header class="bar">
+        <button class="brand"><svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="13" fill="var(--ink)"></rect><path d="M15.5 12v24M15.5 25c0-5.2 3.8-8.3 8.8-8.3s8.8 3.1 8.8 8.3v11" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"></path></svg><span>polyphemus</span><span class="live"></span></button>
+        <div class="bar-mid"></div>
+        <div class="bar-side">
+          <button class="round" aria-label="Search"><svg viewBox="0 0 24 24" class="ico"><circle cx="10.5" cy="10.5" r="6"></circle><path d="m15 15 5 5"></path></svg></button>
+          <button class="round primary" aria-label="Start something"><svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"></path></svg></button>
+        </div>
+      </header>
+      <main class="main">
+
+        <div class="sec">Waiting on you<span class="count">3</span></div>
+
+        <div class="ask">
+          <button class="ask-head"><svg class="mk c-amber" width="24" height="24"><use href="#m-cloud"></use></svg><b>Write 412 records to HubSpot</b><span class="tag">Game Night</span></button>
+          <p>BD is holding at a gate in “Fix the CRM data import”</p>
+          <p class="cost">Dry run matched 412 of 416 rows. 4 are ambiguous and would be skipped. This writes to the live CRM and can’t be undone from here.</p>
+          <div class="claim"><span class="face xs">S</span>Sam can approve this too</div>
+          <div class="buttons"><button class="btn primary">Approve the write</button><button class="btn">See the dry run</button><button class="btn danger">Send back</button></div>
+        </div>
+
+        <div class="ask">
+          <button class="ask-head"><svg viewBox="0 0 24 24" class="ico"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"></path><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"></path></svg><b>HubSpot needs signing in again</b><span class="tag">Game Night</span></button>
+          <p>The token expired at 1:04 PM, and one run failed because of it</p>
+          <p class="cost">Owned by you. BD and the “Weekly pipeline brief” routine both use it. Nothing else is affected.</p>
+          <div class="buttons"><button class="btn primary">Sign in again</button><button class="btn">See what failed</button></div>
+        </div>
+
+        <div class="ask taken">
+          <button class="ask-head"><svg class="mk c-blue" width="24" height="24"><use href="#m-hex"></use></svg><b>Flaky login test</b><span class="tag">polyphemus</span></button>
+          <p>Waiting for an OK to run bash</p>
+          <code>pnpm test --update packages/core/test/login.test.ts</code>
+          <div class="claim"><span class="face xs">S</span><b>Sam</b> is handling this · claimed 2m ago</div>
+          <div class="buttons"><button class="btn" disabled>Allow</button><button class="btn ghost">Take it over</button></div>
+        </div>
+
+        <div class="sec">Working now<span class="count">2</span></div>
+        <div class="list">
+          <button class="row">
+            <span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Fix the CRM data import</b><span class="st waiting">waiting</span><time>now</time></span>
+              <span class="row-sub"><span class="text">Game Night · run 2 · step 4 of 6 · gate</span><span class="dot needs"></span></span>
+            </span>
+          </button>
+          <button class="row">
+            <span class="marks"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Models &amp; providers from the mockup</b><time>now</time></span>
+              <span class="row-sub"><span class="text">polyphemus · Wiring the Connections tab to /api/providers…</span><span class="dot working"></span></span>
+            </span>
+          </button>
+        </div>
+
+        <div class="sec">Earlier today</div>
+        <div class="list">
+          <button class="row">
+            <span class="face">S</span>
+            <span class="row-main">
+              <span class="row-top"><b>Should we cut the release today?</b><time>40m</time></span>
+              <span class="row-sub"><span class="text">polyphemus · Sam: I’d hold until the import is done</span></span>
+            </span>
+          </button>
+          <button class="row">
+            <span class="marks two"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Ship the archive + search work</b><span class="st done">done</span><time>3h</time></span>
+              <span class="row-sub"><span class="text">polyphemus · merged PR #218 · Sam approved</span></span>
+            </span>
+          </button>
+          <button class="row">
+            <span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Weekly pipeline brief</b><span class="st failed">failed</span><time>5h</time></span>
+              <span class="row-sub"><span class="text">Game Night · routine · HubSpot sign-in expired</span><span class="dot needs"></span></span>
+            </span>
+          </button>
+          <button class="row done">
+            <span class="marks"><svg class="mk c-teal"><use href="#m-circle"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>How do other harnesses do memory?</b><time>4h</time></span>
+              <span class="row-sub"><span class="text">Three camps: files, a vector store, consolidation on a schedule</span></span>
+            </span>
+          </button>
+        </div>
+        <p class="hint">You’re seeing Game Night and polyphemus. Sam sees Game Night only.</p>
+      </main>
+      <nav class="tabs">
+        <button aria-current="page"><svg viewBox="0 0 24 24" class="ico"><path d="M4 11.5 12 5l8 6.5V20H4z"></path></svg>Home<span class="badge">3</span></button>
+        <button><svg viewBox="0 0 24 24" class="ico"><path d="M4 7h5l2 2.5h9V19H4z"></path></svg>Projects</button>
+        <button><svg viewBox="0 0 24 24" class="ico"><circle cx="9" cy="8" r="3.2"></circle><path d="M2.5 20c0-3.6 3-5.5 6.5-5.5s6.5 1.9 6.5 5.5"></path><path d="M17 11a3 3 0 1 0 0-6"></path></svg>Team</button>
+        <button><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"></path></svg>Setup</button>
+      </nav>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════ WORK ITEM AND ITS RUN ══════════════════════ -->
+<section class="screen" data-screen="work" hidden>
+  <div>
+    <p class="caption"><b>A work item is a thread that’s tracking an outcome.</b> Same thread, same composer, same place on Home — it has just grown a strip at the top. The run below it is the record of what was actually attempted.</p>
+    <div class="phone">
+      <header class="bar">
+        <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+        <div class="bar-mid"><button class="pill"><svg class="mk c-amber" width="24" height="24"><use href="#m-cloud"></use></svg><span>Fix the CRM data import</span></button></div>
+        <div class="bar-side"><button class="round" aria-label="More"><svg viewBox="0 0 24 24" class="ico"><circle cx="5" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="19" cy="12" r="1.4"></circle></svg></button></div>
+      </header>
+      <main class="main with-composer">
+
+        <div class="outcome">
+          <div class="outcome-top"><b>Fix the CRM data import</b><span class="st waiting">waiting</span></div>
+          <div class="where">Game Night · BD · asked by you, 2 days ago</div>
+          <div class="outcome-bar"><i class="ok"></i><i class="ok"></i><i class="ok"></i><i class="now"></i><i></i><i></i></div>
+          <div class="outcome-foot"><span>Run 2 · step 4 of 6 · at a gate</span><button class="linky">Run 1 failed</button></div>
+        </div>
+
+        <div class="ask">
+          <button class="ask-head"><b>Waiting for an OK to write 412 records to HubSpot</b></button>
+          <p class="cost">Dry run matched 412 of 416. The 4 it couldn’t match are listed in the evidence below. Writing is not reversible from polyphemus.</p>
+          <div class="claim"><span class="face xs">S</span>Sam can approve this too</div>
+          <div class="buttons"><button class="btn primary">Approve the write</button><button class="btn">Send back with a note</button></div>
+        </div>
+
+        <div class="sec">Run 2<span class="count">started 40m ago</span></div>
+        <div class="steps">
+          <div class="step done"><span class="step-n">✓</span><div class="step-body">
+            <div class="step-head"><b>Pull the export</b><span class="st done">done</span></div>
+            <small>BD · 1m 12s · HubSpot · 416 rows</small>
+            <div class="evi"><svg viewBox="0 0 24 24" class="ico mini"><path d="M6 3h8l4 4v14H6z"></path></svg><span class="grow"><span>contacts-export.csv</span><small>416 rows · 84 KB</small></span><span class="receipt">receipt</span></div>
+          </div></div>
+
+          <div class="step done"><span class="step-n">✓</span><div class="step-body">
+            <div class="step-head"><b>Clean and match</b><span class="st done">done</span></div>
+            <small>BD · 6m · gpt-5.6-luna · 41k tokens</small>
+            <button class="step-link"><svg viewBox="0 0 24 24" class="ico mini"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>Read what it did</button>
+          </div></div>
+
+          <div class="step done"><span class="step-n">✓</span><div class="step-body">
+            <div class="step-head"><b>Dry run</b><span class="st done">done</span></div>
+            <small>BD · 22s · nothing was written</small>
+            <div class="evi"><svg viewBox="0 0 24 24" class="ico mini"><path d="M4 6h16M4 12h16M4 18h10"></path></svg><span class="grow"><span>dry-run-diff.txt</span><small>412 would update · 4 unmatched · 0 would delete</small></span><span class="receipt none">local</span></div>
+          </div></div>
+
+          <div class="step gate"><span class="step-n">4</span><div class="step-body">
+            <div class="step-head"><b>Write to HubSpot</b><span class="st waiting">waiting</span></div>
+            <small>Needs a person · waiting 12m · you or Sam</small>
+          </div></div>
+
+          <div class="step todo"><span class="step-n">5</span><div class="step-body">
+            <div class="step-head"><b>Verify the write</b></div>
+            <small>Re-reads the 412 from HubSpot and compares. Not started.</small>
+          </div></div>
+
+          <div class="step todo"><span class="step-n">6</span><div class="step-body">
+            <div class="step-head"><b>Report back</b></div>
+            <small>Not started.</small>
+          </div></div>
+        </div>
+
+        <div class="sec">Run 1<span class="count">failed, 5h ago</span></div>
+        <div class="steps">
+          <div class="step failed"><span class="step-n">!</span><div class="step-body">
+            <div class="step-head"><b>Failed at step 4 of 6</b><span class="st failed">failed</span></div>
+            <small>HubSpot returned 401 at 1:04 PM. The sign-in had expired. Nothing was written.</small>
+            <button class="step-link"><svg viewBox="0 0 24 24" class="ico mini"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>Open the connection</button>
+          </div></div>
+        </div>
+
+        <div class="sec">The conversation</div>
+        <div class="log">
+          <div class="msg you">The import keeps dropping people with two email addresses. Sort it out, but show me before anything gets written.</div>
+          <div class="speaker"><svg class="mk c-amber" width="18" height="18"><use href="#m-cloud"></use></svg><b>BD</b></div>
+          <div class="msg bot">The export has 416 rows. 412 match cleanly on the primary address. The other 4 have two addresses that both exist in HubSpot, so I’ve left them out rather than guess.</div>
+          <div class="claimed-line"><span class="face xs">S</span><span><b>Sam</b> read the dry run · 8m ago</span></div>
+        </div>
+
+        <p class="info">Started as a chat on 10 Sep · <b>tracking an outcome</b> since you asked BD to fix it</p>
+      </main>
+      <div class="composer">
+        <label><textarea rows="1" placeholder="Message BD, or @ someone"></textarea></label>
+        <button class="round primary" aria-label="Send"><svg viewBox="0 0 24 24" class="ico"><path d="m5 12 14-7-5 7 5 7z"></path></svg></button>
+      </div>
+    </div>
+    <p class="caption after">Status comes from what happened, not from what BD said. “Done” on step 1 means a file exists; “receipt” means HubSpot confirmed it. Step 5 exists because BD claiming the write worked isn’t evidence the write worked.</p>
+  </div>
+</section>
+
+<!-- ═════════════════════════ CHAT → WORK ════════════════════════════ -->
+<section class="screen" data-screen="promote" hidden>
+  <div>
+    <p class="caption"><b>A chat stays a chat until it has an outcome.</b> Nothing is converted, nothing moves, and there is no second list. The thread grows a strip, and the row on Home grows a status word.</p>
+    <div class="stack-two">
+
+      <div class="phone">
+        <header class="bar">
+          <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+          <div class="bar-mid"><button class="pill"><svg class="mk c-amber" width="24" height="24"><use href="#m-cloud"></use></svg><span>CRM import is dropping people</span></button></div>
+          <div class="bar-side"><button class="round" aria-label="More"><svg viewBox="0 0 24 24" class="ico"><circle cx="5" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="19" cy="12" r="1.4"></circle></svg></button></div>
+        </header>
+        <main class="main with-composer">
+          <div class="thread-state"><span>BD</span><span class="bullet"></span><span>Game Night</span><span class="bullet"></span><span>Asks first</span></div>
+          <div class="log">
+            <div class="msg you">Is the import dropping people with two email addresses?</div>
+            <div class="msg bot">Yes — 4 in the last export. They have two addresses that both exist in HubSpot, so the matcher skips them.</div>
+            <div class="msg you">Can you fix it properly?</div>
+          </div>
+          <div class="annot"><b>Offered, not imposed</b>The strip appears only when there’s an outcome to track. Decline and it stays an ordinary chat forever.</div>
+          <div class="ask calm">
+            <button class="ask-head"><b>Track this as work?</b></button>
+            <p class="cost">BD would plan it as steps, keep evidence, and stop at anything that writes to HubSpot. You’d see it on Home with a status instead of a last message.</p>
+            <div class="buttons"><button class="btn primary">Track it</button><button class="btn">Just answer me</button></div>
+          </div>
+        </main>
+        <div class="composer">
+          <label><textarea rows="1" placeholder="Message BD"></textarea></label>
+          <button class="round primary" aria-label="Send"><svg viewBox="0 0 24 24" class="ico"><path d="m5 12 14-7-5 7 5 7z"></path></svg></button>
+        </div>
+      </div>
+
+      <div class="phone">
+        <header class="bar"><div class="bar-mid"><span class="screen-title">The same row, before and after</span></div></header>
+        <main class="main plain">
+          <div class="annot"><b>As a chat</b>Second line is the last thing that came of it. No status word, because there’s no outcome to have a status about.</div>
+          <div class="list"><button class="row">
+            <span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>CRM import is dropping people</b><time>2d</time></span>
+            <span class="row-sub"><span class="text">Game Night · 4 in the last export, both addresses already exist</span></span></span>
+          </button></div>
+
+          <div class="annot"><b>As work</b>Same thread, same title, same position in the list. It gains a factual status and a step count. It does not gain a second home.</div>
+          <div class="list"><button class="row">
+            <span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Fix the CRM data import</b><span class="st waiting">waiting</span><time>now</time></span>
+            <span class="row-sub"><span class="text">Game Night · run 2 · step 4 of 6 · gate</span><span class="dot needs"></span></span></span>
+          </button></div>
+
+          <div class="annot"><b>When it ends</b>Done is a fact with evidence behind it, and the thread stays where it is. Nothing to file, nothing to close.</div>
+          <div class="list"><button class="row done">
+            <span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Fix the CRM data import</b><span class="st done">done</span><time>1h</time></span>
+            <span class="row-sub"><span class="text">Game Night · 412 written and verified · 4 left for a person</span></span></span>
+          </button></div>
+
+          <p class="hint">Work items are threads, so they search, archive, filter by project and carry members exactly like everything else. A run is the only new noun, and you never have to make one by hand.</p>
+        </main>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ CONNECTIONS ══════════════════════════ -->
+<section class="screen" data-screen="connections" hidden>
+  <div>
+    <p class="caption"><b>Connections.</b> The same shape as Models &amp; providers, because it is the same problem: an account, its health, and who may use it. Grants live with the thing granted, never in a config file you have to read.</p>
+    <div class="stack-two">
+
+      <div class="phone">
+        <header class="bar">
+          <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+          <div class="bar-mid"><span class="screen-title">Connections</span></div>
+          <div class="bar-side"><button class="round primary" aria-label="Connect a service"><svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"></path></svg></button></div>
+        </header>
+        <main class="main plain">
+          <p class="hint">What polyphemus can reach outside your computer. Models and providers are next door.</p>
+
+          <div class="sec">Needs attention<span class="count">1</span></div>
+          <div class="card">
+            <button class="item bad"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16v.2"></path></svg><span class="grow"><span>HubSpot</span><small>Signed in as alex@example.com · token expired 1:04 PM</small></span><span class="value">Sign in</span><span class="chev">›</span></button>
+          </div>
+
+          <div class="sec">Working<span class="count">3</span></div>
+          <div class="card">
+            <button class="item"><svg viewBox="0 0 24 24" class="ico"><path d="M12 3a9 9 0 0 0-2.8 17.5c.5.1.6-.2.6-.5v-1.8c-2.5.5-3-1.2-3-1.2-.4-1-1-1.3-1-1.3-.8-.6.1-.6.1-.6.9.1 1.4.9 1.4.9.8 1.4 2.1 1 2.6.8.1-.6.3-1 .6-1.2-2-.3-4.1-1-4.1-4.4 0-1 .3-1.8.9-2.4-.1-.3-.4-1.2.1-2.4 0 0 .7-.2 2.4.9a8.3 8.3 0 0 1 4.4 0c1.7-1.1 2.4-.9 2.4-.9.5 1.2.2 2.1.1 2.4.6.6.9 1.4.9 2.4 0 3.4-2.1 4.1-4.1 4.3.3.3.6.9.6 1.8v2.6c0 .3.2.6.7.5A9 9 0 0 0 12 3z"></path></svg><span class="grow"><span>GitHub</span><small>alex-codes · token scopes checked 3h ago · repo, pull_request</small></span><span class="value">2 agents</span><span class="chev">›</span></button>
+            <button class="item"><svg viewBox="0 0 24 24" class="ico"><ellipse cx="12" cy="6" rx="7" ry="3"></ellipse><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"></path><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"></path></svg><span class="grow"><span>Postgres · arcade-prod</span><small>Read-only, declared by Sam · not checkable · last used 2d ago</small></span><span class="value">1 agent</span><span class="chev">›</span></button>
+            <button class="item"><svg viewBox="0 0 24 24" class="ico"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3.5 7 8.5 6 8.5-6"></path></svg><span class="grow"><span>Gmail · alex@example.com</span><small>read and send · owned by you · last used 6h ago</small></span><span class="value">1 agent</span><span class="chev">›</span></button>
+          </div>
+
+          <div class="sec">Available<span class="count">12</span></div>
+          <div class="card">
+            <button class="item"><span class="grow"><span>Browse the catalogue</span><small>Linear, Notion, Slack, Stripe, an MCP server you run yourself…</small></span><span class="chev">›</span></button>
+          </div>
+          <p class="hint">Connecting a service never grants it to anyone. You choose that per agent or per project, and a project can’t grant more than the connection allows. Where a service can’t tell us what a credential permits, the ceiling is what its owner declared — polyphemus holds itself to it, but it isn’t a guarantee.</p>
+        </main>
+      </div>
+
+      <div class="phone">
+        <header class="bar">
+          <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+          <div class="bar-mid"><span class="screen-title">HubSpot</span></div>
+        </header>
+        <main class="main plain">
+          <div class="ask">
+            <button class="ask-head"><b>Signed out since 1:04 PM</b></button>
+            <p class="cost">HubSpot returned 401. One run failed and the weekly brief didn’t send. Signing in again opens a browser on the computer polyphemus runs on.</p>
+            <div class="buttons"><button class="btn primary">Sign in again</button><button class="btn">What failed</button></div>
+          </div>
+
+          <div class="sec">The account</div>
+          <div class="card">
+            <div class="item"><span class="grow"><span>Signed in as</span></span><span class="value">alex@example.com</span></div>
+            <div class="item"><span class="grow"><span>Owned by</span><small>Only the owner can change the account or revoke it</small></span><span class="value">You</span></div>
+            <div class="item"><span class="grow"><span>What this account can do</span><small>Checked with HubSpot when you signed in · OAuth scopes, 10 Sep</small></span><span class="value">Read + write contacts</span></div>
+          </div>
+
+          <div class="sec">Who may use it<span class="count">2</span></div>
+          <div class="card">
+            <div class="grant"><span class="face sm">P</span><span class="grow"><span>Game Night</span><small>Read contacts · write contacts</small><span class="from">granted by you, 10 Sep</span></span><button class="btn small">Change</button></div>
+            <div class="grant"><svg class="mk c-amber" width="26" height="26"><use href="#m-cloud"></use></svg><span class="grow"><span>BD</span><small>Read contacts · write contacts · asks first before writing</small><span class="from">from the project · can’t exceed it</span></span><button class="btn small">Change</button></div>
+            <div class="ceiling">Reviewer and Researcher are in this project but have no HubSpot grant, so they can’t reach it at all.</div>
+          </div>
+
+          <div class="sec">Lately<span class="count">4</span></div>
+          <div class="card">
+            <div class="item"><span class="grow"><span>Read 416 contacts</span><small>BD · Fix the CRM data import · run 2, step 1</small></span><span class="value">40m</span></div>
+            <div class="item bad"><span class="grow"><span>Write refused — 401</span><small>BD · Fix the CRM data import · run 1, step 4</small></span><span class="value">5h</span></div>
+            <div class="item"><span class="grow"><span>Read 416 contacts</span><small>BD · run 1, step 1</small></span><span class="value">5h</span></div>
+          </div>
+          <p class="hint">Every line here names the work it was part of, so “what did this account do and why” is one tap, not a log file.</p>
+        </main>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════ PROJECT WITH TWO PEOPLE ═══════════════════ -->
+<section class="screen" data-screen="project" hidden>
+  <div>
+    <p class="caption"><b>A project with two people in it.</b> Members and their roles sit above the work, because in a shared project “who can do what here” is the first question. The claimed approval is visible to both of them.</p>
+    <div class="phone">
+      <header class="bar">
+        <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+        <div class="bar-mid"><span class="screen-title">Game Night</span></div>
+        <div class="bar-side"><button class="round primary" aria-label="Start something here"><svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"></path></svg></button></div>
+      </header>
+      <main class="main">
+
+        <div class="sec">Waiting on someone<span class="count">2</span></div>
+        <div class="card">
+          <button class="item warn"><svg class="mk c-amber" width="24" height="24"><use href="#m-cloud"></use></svg><span class="grow"><span>Write 412 records to HubSpot</span><small>Fix the CRM data import · run 2, step 4</small></span><span class="value">You or Sam</span><span class="chev">›</span></button>
+          <button class="item bad"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16v.2"></path></svg><span class="grow"><span>HubSpot signed out</span><small>Only the owner can fix this</small></span><span class="value">You</span><span class="chev">›</span></button>
+        </div>
+
+        <div class="sec">People<span class="count">2</span></div>
+        <div class="card">
+          <div class="item"><span class="face me">J</span><span class="grow"><span>You</span><small>Owns this install · sees every project · holds the credentials</small></span><span class="role">Owner</span></div>
+          <div class="item"><span class="face">S</span><span class="grow"><span>Sam</span><small>Joined 4 Sep · can approve work here · can’t change grants · not in your other projects</small></span><span class="role">Member</span></div>
+          <button class="item"><span class="grow"><span>Invite someone</span><small>Member or viewer, in this project only</small></span><span class="chev">›</span></button>
+          <div class="ceiling">Roles are per project. Owning the install isn’t a role — it’s whose computer this is, and it sees everything.</div>
+        </div>
+
+        <div class="sec">Work here<span class="count">3</span></div>
+        <div class="list">
+          <button class="row">
+            <span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Fix the CRM data import</b><span class="st waiting">waiting</span><time>now</time></span>
+            <span class="row-sub"><span class="text">run 2 · step 4 of 6 · Sam read the dry run 8m ago</span><span class="dot needs"></span></span></span>
+          </button>
+          <button class="row">
+            <span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Weekly pipeline brief</b><span class="st failed">failed</span><time>5h</time></span>
+            <span class="row-sub"><span class="text">routine · HubSpot signed out mid-run</span><span class="dot needs"></span></span></span>
+          </button>
+          <button class="row done">
+            <span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Q3 outreach list</b><span class="st done">done</span><time>2d</time></span>
+            <span class="row-sub"><span class="text">52 accounts · Sam approved the send</span></span></span>
+          </button>
+        </div>
+
+        <div class="sec">Conversations<span class="count">4</span><button class="linky">All</button></div>
+        <div class="list">
+          <button class="row">
+            <span class="face">S</span>
+            <span class="row-main"><span class="row-top"><b>Do we still need the old list?</b><time>1d</time></span>
+            <span class="row-sub"><span class="text">Sam: I think we can drop it after the import</span></span></span>
+          </button>
+        </div>
+
+        <div class="sec">What it can reach<span class="count">2</span></div>
+        <div class="card">
+          <button class="item bad"><span class="grow"><span>HubSpot</span><small>Read + write contacts · owned by you</small></span><span class="value">Signed out</span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Postgres · arcade-prod</span><small>Read-only · owned by Sam · Researcher only</small></span><span class="value">Working</span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Grant something else</span><small>From the connections you or Sam own</small></span><span class="chev">›</span></button>
+        </div>
+
+        <div class="sec">Who works here<span class="count">2</span></div>
+        <div class="card">
+          <button class="item"><svg class="mk c-amber" width="26" height="26"><use href="#m-cloud"></use></svg><span class="grow"><span>BD</span><small>gpt-5.6-luna · HubSpot · asks before writing</small></span><span class="chev">›</span></button>
+          <button class="item"><svg class="mk c-teal" width="26" height="26"><use href="#m-circle"></use></svg><span class="grow"><span>Researcher</span><small>gpt-5.6-luna · Postgres read-only</small></span><span class="chev">›</span></button>
+        </div>
+
+        <div class="sec">What agents read here</div>
+        <div class="card">
+          <button class="item"><span class="grow"><span>Rules</span><small>AGENTS.md · edited by Sam, 1d ago</small></span><span class="chev">›</span></button>
+          <button class="item warn"><span class="grow"><span>Review inbox</span><small>Steward proposed 2 edits</small></span><span class="value">2 waiting</span><span class="chev">›</span></button>
+          <div class="item"><span class="grow"><span>Folder</span><small class="path">/home/alex/clients/game-night</small></span></div>
+        </div>
+      </main>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ AGENT AND ITS GRANTS ═════════════════════ -->
+<section class="screen" data-screen="agent" hidden>
+  <div>
+    <p class="caption"><b>An agent, with “may this happen” kept apart from “should it ask me first”.</b> The two questions have different answers and different consequences, so they never share a control.</p>
+    <div class="phone">
+      <header class="bar">
+        <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+        <div class="bar-mid"><button class="pill"><svg class="mk c-amber" width="26" height="26"><use href="#m-cloud"></use></svg><span>BD</span></button></div>
+        <div class="bar-side"><button class="round" aria-label="More"><svg viewBox="0 0 24 24" class="ico"><circle cx="5" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="19" cy="12" r="1.4"></circle></svg></button></div>
+      </header>
+      <main class="main plain">
+        <p class="hint">Chases the pipeline and keeps the CRM honest. Works in Game Night.</p>
+        <button class="btn primary wide">Message BD</button>
+
+        <div class="sec">What it may reach<span class="count">2</span></div>
+        <div class="card">
+          <div class="grant"><span class="grow"><span>HubSpot</span><small>Read contacts · write contacts</small><span class="from">from Game Night · the project’s ceiling is read + write</span></span><button class="btn small">Narrow</button></div>
+          <div class="grant"><span class="grow"><span>Gmail</span><small>Send only · can’t read your inbox</small><span class="from">granted to BD alone, not to the project</span></span><button class="btn small">Change</button></div>
+          <div class="ceiling">Postgres is granted to this project but not to BD, so BD can’t reach it. Narrowing here never widens anything.</div>
+        </div>
+
+        <div class="sec">When it asks first</div>
+        <div class="card">
+          <div class="item"><span class="grow"><span>Anything that writes outside polyphemus</span><small>HubSpot writes, sending mail, pushing to GitHub</small></span><span class="value">Always asks</span></div>
+          <div class="item"><span class="grow"><span>Reading</span><small>Exports, queries, files in the project folder</small></span><span class="value">Goes ahead</span></div>
+          <div class="item warn"><span class="grow"><span>In threads you start</span><small>You run YOLO. Sam’s threads still ask.</small></span><span class="value">Yours: YOLO</span></div>
+        </div>
+        <p class="hint">Asking is about interruption. Reaching is about access. Turning off the asking never widens what BD may reach.</p>
+
+        <div class="sec">How it runs</div>
+        <div class="card">
+          <button class="item"><span class="grow"><span>Model</span><small>OpenAI · Codex CLI · your ChatGPT plan</small></span><span class="value">gpt-5.6-luna</span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>If that can’t run</span><small>claude-opus-5, then ask. Never per-token billing.</small></span><span class="value">1 backup</span><span class="chev">›</span></button>
+        </div>
+
+        <div class="sec">What it does on its own</div>
+        <div class="card">
+          <button class="item bad"><span class="grow"><span>Weekly pipeline brief</span><small>Mondays 8:00 AM · last run failed: HubSpot signed out</small></span><span class="value">Failed</span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Skills</span><small>crm-hygiene, outreach-drafting</small></span><span class="value">2</span><span class="chev">›</span></button>
+        </div>
+
+        <div class="sec">Who it is</div>
+        <div class="card">
+          <button class="item"><span class="grow"><span>Name and mark</span><small>Called BD · amber cloud</small></span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Instructions</span><small>“Blunt. Never invent a contact. Always show me before writing.”</small></span><span class="chev">›</span></button>
+        </div>
+      </main>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ DESKTOP ══════════════════════════════ -->
+<section class="screen" data-screen="desktop" hidden>
+  <div>
+    <p class="caption wide-caption"><b>Desktop.</b> Home’s list, the thread, and a detail pane that holds the run — the one place where you genuinely need to see two things at once: what’s being asked, and what it’s part of.</p>
+    <div class="deskframe">
+      <div class="desk">
+        <div class="rail-inner">
+          <button class="rail-brand"><svg viewBox="0 0 48 48" width="30" height="30" aria-hidden="true"><rect width="48" height="48" rx="13" fill="var(--ink)"></rect><path d="M15.5 12v24M15.5 25c0-5.2 3.8-8.3 8.8-8.3s8.8 3.1 8.8 8.3v11" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"></path></svg></button>
+          <button aria-current="page"><svg viewBox="0 0 24 24" class="ico"><path d="M4 11.5 12 5l8 6.5V20H4z"></path></svg>Home<span class="badge">3</span></button>
+          <button><svg viewBox="0 0 24 24" class="ico"><path d="M4 7h5l2 2.5h9V19H4z"></path></svg>Projects</button>
+          <button><svg viewBox="0 0 24 24" class="ico"><circle cx="9" cy="8" r="3.2"></circle><path d="M2.5 20c0-3.6 3-5.5 6.5-5.5s6.5 1.9 6.5 5.5"></path><path d="M17 11a3 3 0 1 0 0-6"></path></svg>Team</button>
+          <button><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3"></path></svg>Setup</button>
+        </div>
+
+        <div class="side">
+          <header class="bar">
+            <div class="bar-mid"><span class="screen-title">Home</span></div>
+            <div class="bar-side"><button class="round" aria-label="Search"><svg viewBox="0 0 24 24" class="ico"><circle cx="10.5" cy="10.5" r="6"></circle><path d="m15 15 5 5"></path></svg></button><button class="round primary" aria-label="Start"><svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"></path></svg></button></div>
+          </header>
+          <main class="main plain">
+            <div class="sec">Waiting on you<span class="count">3</span></div>
+            <div class="list">
+              <button class="row" aria-current="true"><span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span><span class="row-main"><span class="row-top"><b>Fix the CRM data import</b><span class="st waiting">waiting</span><time>now</time></span><span class="row-sub"><span class="text">Game Night · gate at step 4</span><span class="dot needs"></span></span></span></button>
+              <button class="row"><span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span><span class="row-main"><span class="row-top"><b>HubSpot signed out</b><time>5h</time></span><span class="row-sub"><span class="text">Game Night · one run failed</span><span class="dot needs"></span></span></span></button>
+              <button class="row"><span class="marks"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span><span class="row-main"><span class="row-top"><b>Flaky login test</b><time>3m</time></span><span class="row-sub"><span class="text">polyphemus · Sam is handling it</span></span></span></button>
+            </div>
+            <div class="sec">Earlier</div>
+            <div class="list">
+              <button class="row"><span class="face">S</span><span class="row-main"><span class="row-top"><b>Should we cut the release today?</b><time>40m</time></span><span class="row-sub"><span class="text">polyphemus · Sam: I’d hold</span></span></span></button>
+              <button class="row done"><span class="marks two"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg></span><span class="row-main"><span class="row-top"><b>Ship the archive work</b><span class="st done">done</span><time>3h</time></span><span class="row-sub"><span class="text">polyphemus · merged #218</span></span></span></button>
+            </div>
+          </main>
+        </div>
+
+        <div class="desk-cols">
+          <div>
+            <header class="bar">
+              <div class="bar-mid"><button class="pill"><svg class="mk c-amber" width="24" height="24"><use href="#m-cloud"></use></svg><span>Fix the CRM data import</span></button></div>
+              <div class="bar-side"><span class="faces"><span class="face sm me">J</span><span class="face sm">S</span></span></div>
+            </header>
+            <main class="main plain">
+              <div class="outcome">
+                <div class="outcome-top"><b>Fix the CRM data import</b><span class="st waiting">waiting</span></div>
+                <div class="where">Game Night · BD · asked by you, 2 days ago</div>
+                <div class="outcome-bar"><i class="ok"></i><i class="ok"></i><i class="ok"></i><i class="now"></i><i></i><i></i></div>
+              </div>
+              <div class="ask">
+                <button class="ask-head"><b>Waiting for an OK to write 412 records to HubSpot</b></button>
+                <p class="cost">412 of 416 matched. Writing is not reversible from polyphemus.</p>
+                <div class="claim"><span class="face xs">S</span>Sam can approve this too · read the dry run 8m ago</div>
+                <div class="buttons"><button class="btn primary">Approve the write</button><button class="btn">See the dry run</button><button class="btn danger">Send back</button></div>
+              </div>
+              <div class="log">
+                <div class="msg you">Sort it out, but show me before anything gets written.</div>
+                <div class="speaker"><svg class="mk c-amber" width="18" height="18"><use href="#m-cloud"></use></svg><b>BD</b></div>
+                <div class="msg bot">412 match cleanly. The other 4 have two addresses that both exist, so I’ve left them out rather than guess.</div>
+                <div class="msg them">Sam: the 4 are all from the old list — fine to leave.</div>
+              </div>
+            </main>
+          </div>
+
+          <aside class="detail">
+            <header class="bar"><div class="bar-mid"><span class="screen-title">Run 2</span></div><div class="bar-side"><button class="round" aria-label="Close"><svg viewBox="0 0 24 24" class="ico"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div></header>
+            <main class="main plain">
+              <div class="steps">
+                <div class="step done"><span class="step-n">✓</span><div class="step-body"><div class="step-head"><b>Pull the export</b></div><small>416 rows</small></div></div>
+                <div class="step done"><span class="step-n">✓</span><div class="step-body"><div class="step-head"><b>Clean and match</b></div><small>412 matched</small></div></div>
+                <div class="step done"><span class="step-n">✓</span><div class="step-body"><div class="step-head"><b>Dry run</b></div><small>nothing written</small></div></div>
+                <div class="step gate"><span class="step-n">4</span><div class="step-body"><div class="step-head"><b>Write</b><span class="st waiting">waiting</span></div><small>you or Sam</small></div></div>
+                <div class="step todo"><span class="step-n">5</span><div class="step-body"><div class="step-head"><b>Verify</b></div></div></div>
+                <div class="step todo"><span class="step-n">6</span><div class="step-body"><div class="step-head"><b>Report</b></div></div></div>
+              </div>
+              <div class="sec">Evidence<span class="count">2</span></div>
+              <div class="evi"><svg viewBox="0 0 24 24" class="ico mini"><path d="M6 3h8l4 4v14H6z"></path></svg><span class="grow"><span>contacts-export.csv</span><small>416 rows</small></span><span class="receipt">receipt</span></div>
+              <div class="evi"><svg viewBox="0 0 24 24" class="ico mini"><path d="M4 6h16M4 12h16M4 18h10"></path></svg><span class="grow"><span>dry-run-diff.txt</span><small>412 update · 4 skipped</small></span><span class="receipt none">local</span></div>
+              <div class="sec">Run 1</div>
+              <div class="card"><div class="item bad"><span class="grow"><span>Failed at step 4</span><small>HubSpot 401 · nothing written</small></span><span class="value">5h</span></div></div>
+            </main>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+  var btns = document.querySelectorAll('.preview [data-go]');
+  function show(name){
+    document.querySelectorAll('.screen').forEach(function(s){ s.hidden = s.dataset.screen !== name; });
+    btns.forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.go === name)); });
+    window.scrollTo({ top: 0 });
+  }
+  btns.forEach(function(b){ b.addEventListener('click', function(){ show(b.dataset.go); }); });
+  var t = document.getElementById('theme');
+  t.addEventListener('click', function(){
+    var dark = document.documentElement.classList.toggle('dark');
+    document.documentElement.classList.toggle('light', !dark);
+    t.textContent = dark ? 'Light' : 'Dark';
+  });
+</script>
+</body>
+</html>

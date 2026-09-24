@@ -1,0 +1,4 @@
+# polyphemus settings for this project. Safe to commit: no secrets go here.
+name = "polyphemus"
+description = "Open-source, multi-provider agent harness: your agents and subscriptions, reachable from your phone."
+

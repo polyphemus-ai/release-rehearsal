@@ -1,0 +1,23 @@
+{
+  "name": "@polyphemus/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "poly": "./bin/polyphemus.mjs",
+    "polyphemus": "./bin/polyphemus.mjs"
+  },
+  "scripts": {
+    "start": "node ./bin/polyphemus.mjs"
+  },
+  "dependencies": {
+    "@polyphemus/core": "workspace:*",
+    "@polyphemus/daemon": "workspace:*",
+    "qrcode": "^1.5.4",
+    "tsx": "^4.23.13"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6"
+  },
+  "license": "Apache-2.0"
+}

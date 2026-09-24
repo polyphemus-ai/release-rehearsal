@@ -1,0 +1,21 @@
+{
+  "name": "@polyphemus/daemon",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@polyphemus/core": "workspace:*",
+    "@novnc/novnc": "^1.7.0",
+    "emojibase-data": "^16.0.3",
+    "web-push": "^3.6.7",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/web-push": "^3.6.4",
+    "@types/ws": "^8.18.1"
+  },
+  "license": "Apache-2.0"
+}

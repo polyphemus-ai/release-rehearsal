@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+.env
+.env.*
+# Written by an OpenClaw pre-compact hook; not part of polyphemus.
+memory/
+# Codex's working folder, from a third-party assessment; not part of polyphemus.
+.codex/
+
+# What an agent banked before the workspace moved: its own notes, full of this machine's paths.
+HANDOFF-*.md

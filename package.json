@@ -1,0 +1,26 @@
+{
+  "name": "polyphemus",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.29.3",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "poly": "node packages/cli/bin/polyphemus.mjs",
+    "polyphemus": "node packages/cli/bin/polyphemus.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning vitest run",
+    "build": "node scripts/build.mjs",
+    "pack:check": "node scripts/pack-check.mjs",
+    "changeset": "changeset"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^3.0.2",
+    "@types/node": "^22.20.2",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  },
+  "license": "Apache-2.0"
+}

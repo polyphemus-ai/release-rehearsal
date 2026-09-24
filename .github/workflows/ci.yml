@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: No secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Recognisable secrets in the files (the denylist of private names isn't here on purpose).
+      - run: node scripts/leak-check.mjs
+
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      # A changeset naming a package that isn't in the workspace crashes the release's first step;
+      # found only at release time until this (2026-09-23): twelve named the published `polyphemus`.
+      - run: pnpm changeset status
+      # Docker is on the Linux runners, so the worker-isolation tests really run there. On macOS there
+      # is none, and they say so loudly unless this says we know (containers.ts).
+      - run: pnpm test
+        env:
+          POLYPHEMUS_NO_CONTAINERS: ${{ runner.os == 'macOS' && '1' || '' }}
+      # Every screen of the app in a real browser, with the daemon's real security headers.
+      - run: node scripts/smoke.mjs
+        if: runner.os == 'Linux'
+      # Installs the package exactly as it would be published, into an empty folder, and runs it.
+      - run: node scripts/pack-check.mjs
+      # The one-liner, run for real against that same package, into a home folder of its own.
+      - name: The install script
+        run: |
+          T=$(mktemp -d)
+          HOME=$T POLYPHEMUS_HOME=$T/.polyphemus POLYPHEMUS_PACKAGE="$PWD/$(ls dist/polyphemus-*.tgz)" sh install/install.sh
+          test "$(HOME=$T POLYPHEMUS_HOME=$T/.polyphemus $T/.local/bin/poly --version)" = "$(node -p "require('./packages/cli/package.json').version")"
+
+  # CI runners ship Node, npm and git, so the install script's real audience — a machine with none
+  # of them — was never tested. These are (2026-09-22).
+  clean-install:
+    name: Install on a clean machine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node scripts/build.mjs --pack
+      - name: Everything the container needs, in one folder
+        run: cp install/install.sh scripts/clean-install-check.sh dist/
+      # Driven with docker run rather than a container job: GitHub's actions need glibc, so they
+      # can't run inside the Alpine one at all.
+      - name: A machine with no Node, no npm and no git
+        run: |
+          set -e
+          for image in ubuntu:24.04 debian:12 fedora:latest; do
+            case "$image" in fedora*) mgr=dnf ;; *) mgr=apt ;; esac
+            echo "::group::$image"
+            docker run --rm -v "$PWD/dist:/work:ro" -e HOME=/root "$image" sh /work/clean-install-check.sh "$mgr"
+            echo "::endgroup::"
+          done
+      - name: A musl machine, which it must refuse clearly
+        run: docker run --rm -v "$PWD/dist:/work:ro" -e HOME=/root alpine:latest sh /work/clean-install-check.sh apk
+      # Windows can't be run here, but its scripts can be parsed: a syntax slip, or a curly apostrophe
+      # (which Windows PowerShell takes for a quote), fails before anyone on Windows meets it.
+      - name: The Windows scripts parse, in plain ASCII
+        shell: pwsh
+        run: |
+          foreach ($file in 'install/install.ps1', 'scripts/windows-check.ps1') {
+            $errors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$null, [ref]$errors)
+            if ($errors) { $errors | ForEach-Object { Write-Error "${file}: line $($_.Extent.StartLineNumber): $($_.Message)" }; exit 1 }
+            if ([IO.File]::ReadAllBytes((Resolve-Path $file)) | Where-Object { $_ -gt 127 }) { Write-Error "${file} isn't plain ASCII"; exit 1 }
+          }

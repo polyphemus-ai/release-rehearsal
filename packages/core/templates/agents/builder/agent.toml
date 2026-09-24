@@ -1,0 +1,8 @@
+# What this agent is, and what it runs on. Safe to commit: no secrets go here.
+name = "builder"
+title = "Builder"
+description = "making a change end to end: write it, prove it works, leave the tree clean"
+
+# model = "claude"          # its own model; leave it out to use the session's
+# fallback = ["codex"]      # what to try when that one can't take a turn
+# skills = ["debug-failing-test"]   # only these skills; leave it out for every skill in scope

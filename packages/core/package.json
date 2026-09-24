@@ -1,0 +1,17 @@
+{
+  "name": "@polyphemus/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.125.0",
+    "croner": "^10.0.1",
+    "openai": "^7.15.0",
+    "smol-toml": "^1.8.0",
+    "yaml": "^2.9.1"
+  },
+  "license": "Apache-2.0"
+}

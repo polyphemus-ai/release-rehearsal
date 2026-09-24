@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finding your way — a response</title>
+<style>
+:root{
+  --ground:#edeff2; --surface:#ffffff; --well:#f2f4f6; --well-2:#e7eaee;
+  --ink:#151922; --muted:#677285; --line:#e2e6eb;
+  --accent:#2f5fe0; --accent-ink:#ffffff;
+  --attention:#d97706; --danger:#d0342c; --good:#16a34a;
+  --acme:#0f9d8a; --notion:#d0342c; --arcade:#2f5fe0; --polyphemus:#e08a1e; --reports:#7c5cd6;
+  --shadow:0 1px 2px rgba(21,25,34,.06), 0 8px 20px -10px rgba(21,25,34,.28);
+  --display:'Bricolage Grotesque','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --ui:'Figtree','Segoe UI',system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not(.light){
+  --ground:#0d1015; --surface:#151a21; --well:#1c222b; --well-2:#252c37;
+  --ink:#e8ecf1; --muted:#97a1b2; --line:#28303b;
+  --accent:#7096f4; --accent-ink:#0d1015;
+  --attention:#f0a13b; --danger:#f07167; --good:#4ade80;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 20px -10px rgba(0,0,0,.6);
+  color-scheme:dark;
+}}
+:root.dark{
+  --ground:#0d1015; --surface:#151a21; --well:#1c222b; --well-2:#252c37;
+  --ink:#e8ecf1; --muted:#97a1b2; --line:#28303b;
+  --accent:#7096f4; --accent-ink:#0d1015;
+  --attention:#f0a13b; --danger:#f07167; --good:#4ade80;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 20px -10px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px 72px;background:var(--ground);color:var(--ink);font:15px/1.5 var(--ui)}
+.doc{max-width:1280px;margin:0 auto}
+h1{font:700 30px/1.15 var(--display);letter-spacing:-.02em;margin:0 0 8px}
+h2{font:650 19px/1.2 var(--display);margin:0 0 4px}
+h3{font:600 15px/1.2 var(--display);margin:0}
+.lead{color:var(--muted);margin:0 0 16px;max-width:70ch}
+.theme{position:fixed;right:16px;top:16px;z-index:9;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 13px;font:600 12.5px var(--ui);cursor:pointer;box-shadow:var(--shadow)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px;margin:0 0 22px}
+.scroll{overflow-x:auto;padding-bottom:6px}
+.frames{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.cap{font:600 12px/1.3 var(--ui);color:var(--muted);margin:8px 0 0;max-width:400px}
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:16px}
+.note{background:var(--well);border-radius:12px;padding:11px 13px}
+.note b{display:block;font-size:13.5px;margin-bottom:3px}
+.note p{margin:0;font-size:12.5px;color:var(--muted)}
+.why{margin-top:16px;border-left:2px solid var(--accent);background:var(--well);border-radius:0 12px 12px 0;padding:12px 14px;font-size:13px;color:var(--muted)}
+.why b{color:var(--ink)}
+
+/* frames */
+.phone{width:400px;flex:none;border:1px solid var(--line);border-radius:22px;background:var(--surface);overflow:hidden;display:flex;flex-direction:column;min-height:720px;box-shadow:var(--shadow)}
+.desk{width:1200px;flex:none;border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden;display:grid;grid-template-columns:78px 320px minmax(0,1fr) 264px;min-height:560px;box-shadow:var(--shadow)}
+.desk.three{grid-template-columns:78px 320px minmax(0,1fr)}
+.rail{border-right:1px solid var(--line);padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.logo{width:30px;height:30px;border-radius:9px;background:var(--ink);margin-bottom:8px}
+.nav{width:100%;border-radius:12px;padding:8px 0;display:grid;justify-items:center;gap:3px;font:600 11px var(--ui);color:var(--muted)}
+.nav.on{background:var(--well-2);color:var(--accent)}
+.nav svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.col{border-right:1px solid var(--line);padding:10px 12px 16px;overflow:hidden;display:flex;flex-direction:column}
+.phone .col{border-right:0;flex:1}
+.pane{padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.side{border-left:1px solid var(--line);padding:12px 14px}
+.top{display:flex;align-items:center;gap:8px;padding:2px 2px 8px}
+.top h3{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.round{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:15px;color:var(--muted);flex:none}
+.round.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tabbar{border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:5px 4px 8px}
+
+/* view control */
+.view{display:flex;align-items:center;gap:8px;padding:2px 2px 8px}
+.view .label{font:600 11px var(--ui);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.seg{display:flex;gap:3px;background:var(--well);border-radius:10px;padding:3px;flex:1}
+.seg button{flex:1;border:0;background:none;border-radius:8px;padding:6px 4px;font:600 12.5px var(--ui);color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.tabs{display:flex;gap:4px;background:var(--well);border-radius:12px;padding:4px;margin-bottom:8px}
+.tabs button{flex:1;border:0;background:none;border-radius:9px;padding:8px 4px;font:600 13px var(--ui);color:var(--muted);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+
+/* filter chip */
+.chipbar{display:flex;align-items:center;gap:6px;padding:0 2px 8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--well-2);border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 4px;font:600 12.5px var(--ui)}
+.chip .x{width:17px;height:17px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:11px;color:var(--muted)}
+.chip.ghost{background:none;color:var(--muted);font-weight:600}
+
+/* sections and groups */
+.sec{font:600 11px var(--ui);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:12px 2px 4px;display:flex;align-items:center;gap:7px}
+.sec .n{margin-left:auto;font-variant-numeric:tabular-nums}
+.group{display:flex;align-items:center;gap:8px;margin:14px 2px 4px;font:650 14px var(--display)}
+.group .n{color:var(--muted);font:600 12px var(--ui)}
+.group .open{margin-left:auto;font:600 12px var(--ui);color:var(--accent)}
+.group.first{margin-top:4px}
+
+/* rows */
+.row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 6px;border-radius:12px}
+.row.on{background:var(--well-2)}
+.row b{display:block;font:600 14px var(--ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row small{display:block;color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row time{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.row.machine b{font-weight:550}
+.row.machine .mk,.row.machine .sq,.row.machine .face{opacity:.72}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--attention);box-shadow:0 0 0 3px color-mix(in srgb,var(--attention) 22%,transparent)}
+.mk{width:30px;height:30px;flex:none}
+.mk svg{width:30px;height:30px}
+.face{width:30px;height:30px;border-radius:50%;background:var(--well-2);color:var(--muted);display:grid;place-items:center;font:650 11px var(--ui);flex:none}
+.sq{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;font:700 11px var(--display);flex:none}
+.sq.sm{width:20px;height:20px;border-radius:6px;font-size:9px}
+.p-acme{background:var(--acme)}.p-notion{background:var(--notion)}.p-arcade{background:var(--arcade)}
+.p-polyphemus{background:var(--polyphemus)}.p-reports{background:var(--reports)}
+.sq.none{background:none;border:1.5px dashed var(--line);color:var(--muted)}
+.tag{font:700 10px var(--ui);letter-spacing:.04em;text-transform:uppercase;padding:2px 6px;border-radius:999px;background:var(--well-2);color:var(--muted);white-space:nowrap}
+.tag.run{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
+.tag.wait{background:color-mix(in srgb,var(--attention) 16%,transparent);color:var(--attention)}
+.tag.done{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+.tag.plain{background:var(--well-2)}
+
+/* collapsed machine rows */
+.roll{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 6px;border-radius:12px;background:var(--well);border:1px dashed var(--line)}
+.roll b{font:600 13.5px var(--ui)}
+.roll small{color:var(--muted);font-size:12.5px}
+.roll .open{font:600 12px var(--ui);color:var(--accent)}
+.stackmk{position:relative;width:30px;height:30px}
+.stackmk .sq{position:absolute;width:22px;height:22px;border-radius:7px;font-size:8px}
+.stackmk .sq:nth-child(1){top:0;left:0}
+.stackmk .sq:nth-child(2){bottom:0;right:0;box-shadow:0 0 0 2px var(--surface)}
+
+/* ask card */
+.ask{background:var(--well);border:1px solid color-mix(in srgb,var(--attention) 50%,var(--line));border-radius:14px;padding:11px 12px;margin:0 2px 8px;display:grid;gap:8px}
+.ask .head{display:flex;align-items:center;gap:7px;font:600 13.5px var(--ui)}
+.ask .head .where{margin-left:auto}
+.ask p{margin:0;font:600 14px var(--ui)}
+.ask small{color:var(--muted);font-size:12.5px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:7px 12px;font:600 13px var(--ui);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.elsewhere{display:flex;align-items:center;gap:7px;margin:0 2px 4px;padding:8px 10px;border-radius:11px;background:var(--well);font-size:12.5px;color:var(--muted)}
+.elsewhere .link{margin-left:auto;color:var(--accent);font-weight:600}
+
+/* new-items pill */
+.newpill{align-self:center;margin:6px 0 2px;background:var(--ink);color:var(--surface);border-radius:999px;padding:5px 12px;font:600 12px var(--ui)}
+
+/* thread pane */
+.where-bar{display:flex;align-items:center;gap:8px;padding:0 2px 8px;font-size:12.5px;color:var(--muted)}
+.bubble{background:var(--well);border-radius:14px;padding:9px 12px;font-size:13.5px;max-width:78%}
+.bubble.you{background:var(--accent);color:var(--accent-ink);align-self:flex-end}
+.backbar{display:flex;align-items:center;gap:8px;padding:8px 10px;margin:0 2px 8px;border-radius:11px;background:var(--well-2);font:600 12.5px var(--ui)}
+.backbar .go{margin-left:auto;color:var(--accent)}
+
+/* cards */
+.card{background:var(--well);border-radius:12px;padding:10px 12px;margin:0 2px 7px}
+.card b{font:600 13.5px var(--ui)}
+.card small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.card .rowline{display:flex;align-items:center;gap:8px}
+.card .rowline .tag{margin-left:auto}
+.tools{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.tool{font:600 11.5px var(--ui);background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:3px 7px;color:var(--muted)}
+.tool.on{color:var(--ink);border-color:var(--accent)}
+.mono{font:12px/1.45 ui-monospace,Menlo,monospace;color:var(--muted)}
+.steps{display:grid;gap:5px;margin-top:6px}
+.s{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.s .ok{width:13px;height:13px;border-radius:50%;background:color-mix(in srgb,var(--good) 22%,transparent);flex:none}
+.s.now{color:var(--ink);font-weight:600}
+.s.now .ok{background:color-mix(in srgb,var(--attention) 28%,transparent)}
+.iconrow{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;margin-top:6px}
+.icondemo{display:grid;justify-items:center;gap:5px;font:600 11px var(--ui);color:var(--muted);width:78px;text-align:center}
+.icondemo svg{width:24px;height:24px;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icondemo.bad svg{stroke:var(--danger)}
+.mk .a-hex{fill:var(--acme)}
+</style>
+</head>
+<body>
+<button class="theme" id="theme" type="button">Light / dark</button>
+
+<svg width="0" height="0" aria-hidden="true"><defs>
+  <symbol id="hex" viewBox="0 0 48 48"><path d="M24 3.5 42 14v20L24 44.5 6 34V14z"/><rect x="15" y="18" width="18" height="5.5" rx="2.75" fill="#fff"/></symbol>
+  <symbol id="dia" viewBox="0 0 48 48"><path d="M24 3.5 44.5 24 24 44.5 3.5 24z"/><rect x="15" y="18" width="18" height="5.5" rx="2.75" fill="#fff"/></symbol>
+  <symbol id="cir" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20.5"/><rect x="15" y="18" width="18" height="5.5" rx="2.75" fill="#fff"/></symbol>
+  <symbol id="cld" viewBox="0 0 48 48"><path d="M14 39a10 10 0 0 1-.7-20 12.5 12.5 0 0 1 23.2 2.1A9 9 0 0 1 34.5 39z"/><rect x="15" y="24" width="18" height="5.5" rx="2.75" fill="#fff"/></symbol>
+</defs></svg>
+<style>
+  .m-orang{fill:#e08a1e}.m-plan{fill:#8a5cf6}.m-build{fill:#2f5fe0}.m-rev{fill:#0f9d8a}
+</style>
+
+<div class="doc">
+<h1>Finding your way — a response</h1>
+<p class="lead">Answers the six journeys in <b>finding-your-way-brief.md</b>. Four decisions do the work:
+<b>group, don’t sort</b>; <b>opening a project scopes Home rather than replacing it</b>; <b>the list never reorders under you</b>; and <b>a mark is never a model</b>. The project page gets two tabs, not three. Everything here is on the app’s tokens, light and dark, at 400px and 1200px.</p>
+
+<!-- ═══════════ 1 · Find yesterday's chat ═══════════ -->
+<section class="panel">
+  <h2>Journey 1 · Find yesterday’s chat</h2>
+  <p class="lead">30 threads, 5 projects. Find the Notion Documentation chat where Otter was asked about Notion. <b>Tap View → Project, read one heading, tap the row.</b> Three taps, and you never read another project’s rows.</p>
+  <div class="frames">
+    <div>
+      <div class="phone">
+        <div class="col">
+          <div class="top"><h3>Home</h3><span class="round">⌕</span><span class="round primary">+</span></div>
+          <div class="view"><span class="label">View</span><div class="seg"><button type="button" aria-pressed="false">Time</button><button type="button" aria-pressed="true">Project</button><button type="button" aria-pressed="false">Agent</button></div></div>
+
+          <div class="sec">Waiting on you <span class="n">1</span></div>
+          <div class="ask">
+            <div class="head"><span class="sq sm p-acme">OE</span>Ship issue #3<span class="where tag">Acme website</span></div>
+            <p>Merge pull request #4 into develop?</p>
+            <small>Otter has had it open for 4 minutes. 2 files, +81 −3.</small>
+            <div class="btns"><button class="btn primary" type="button">Allow</button><button class="btn" type="button">Read the diff</button></div>
+          </div>
+
+          <div class="group first"><span class="sq sm p-acme">OE</span>Acme Website<span class="n">3</span><span class="open">Open</span></div>
+          <div class="row"><span class="mk"><svg class="m-orang"><use href="#cld"></use></svg></span><span><b>Ship issue #3 <span class="tag wait">Gate</span></b><small>run 1 · step 12 of 14</small></span><time>now <span class="dot"></span></time></div>
+          <div class="row machine"><span class="sq p-acme">OE</span><span><b>Orientation: Acme Website</b><small>polyphemus · I opened issue #3…</small></span><time>7m</time></div>
+          <div class="row machine"><span class="sq p-acme">OE</span><span><b>Feedback: contact form sends nothing</b><small>polyphemus · from Alex, 9m ago</small></span><time>9m</time></div>
+
+          <div class="group"><span class="sq sm p-notion">ND</span>Notion Documentation<span class="n">2</span><span class="open">Open</span></div>
+          <div class="row on"><span class="mk"><svg class="m-orang"><use href="#cld"></use></svg></span><span><b>@Otter … can you create</b><small>Rowan: the Notion page is live now</small></span><time>14h</time></div>
+          <div class="row"><span class="face">E</span><span><b>Where should the API docs live?</b><small>Rowan: under Engineering, I think</small></span><time>2d</time></div>
+
+          <div class="group"><span class="sq sm p-arcade">B</span>gamenight<span class="n">1</span><span class="open">Open</span></div>
+          <div class="row"><span class="mk"><svg class="m-orang"><use href="#cld"></use></svg></span><span><b>Rowan and Otter</b><small>Rowan: ah, that explains it!</small></span><time>3h</time></div>
+
+          <div class="group"><span class="sq sm p-polyphemus">h</span>polyphemus<span class="n">3</span><span class="open">Open</span></div>
+          <div class="row"><span class="face">E</span><span><b>Rowan</b><small>that’s it — a map! Want one…</small></span><time>16h</time></div>
+          <div class="row"><span class="sq none">—</span><span><b>just chat</b><small>you started this, 1d ago</small></span><time>1d</time></div>
+
+          <div class="group"><span class="sq sm p-reports">R</span>Reports<span class="n">1</span><span class="open">Open</span></div>
+          <div class="row"><span class="mk"><svg class="m-plan"><use href="#dia"></use></svg></span><span><b>Add a dark mode to exports</b><small>work item · not started</small></span><time>1d</time></div>
+        </div>
+        <div class="tabbar">
+          <div class="nav on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h5M15 16h5"/><circle cx="16" cy="8" r="2.4"/><circle cx="12" cy="16" r="2.4"/></svg>Setup</div>
+        </div>
+      </div>
+      <p class="cap">Groups are ordered by their newest thread, so the busy project is still on top. Waiting on you sits above all of them, ungrouped.</p>
+    </div>
+
+    <div>
+      <div class="notes">
+        <div class="note"><b>Group, don’t sort</b><p>“Sort by project” alphabetises and destroys recency. Grouping keeps newest-first inside each project and promotes the project name from grey text on line two to a heading with its colour.</p></div>
+        <div class="note"><b>Three options only</b><p>Time · Project · Agent. Time is the default and the one the settled brief describes. Nothing else earns a slot.</p></div>
+        <div class="note"><b>No project, no agent</b><p>Grouped by project, threads with none fall into a “No project” group, last. Grouped by agent, a thread files under its lead agent, or its only agent, or “No agent”. A thread never appears twice.</p></div>
+        <div class="note"><b>Groups collapse</b><p>Tapping a group heading collapses it, and that’s remembered. Collapsing hides rows, so a collapsed heading always shows its count.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 2 · Change a grant mid-run ═══════════ -->
+<section class="panel">
+  <h2>Journey 2 · Change a grant mid-run, and come back</h2>
+  <p class="lead">Watching <i>Ship issue #3</i>. Untick a tool on the Planner grant, then return to the run. <b>You never leave the project, because opening one scopes Home instead of replacing it.</b> The thread’s own header is the way in to its setup, so “go to Projects and find it” never happens.</p>
+  <div class="scroll">
+    <div class="desk">
+      <nav class="rail">
+        <div class="logo"></div>
+        <div class="nav on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+        <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h5M15 16h5"/><circle cx="16" cy="8" r="2.4"/><circle cx="12" cy="16" r="2.4"/></svg>Setup</div>
+      </nav>
+
+      <div class="col">
+        <div class="top"><h3>Home</h3><span class="round">⌕</span><span class="round primary">+</span></div>
+        <div class="chipbar">
+          <span class="chip"><span class="sq sm p-acme">OE</span>Acme Website<span class="x">×</span></span>
+          <span class="chip ghost">1 of 5 projects</span>
+        </div>
+        <div class="view"><span class="label">View</span><div class="seg"><button type="button" aria-pressed="true">Time</button><button type="button" aria-pressed="false">Kind</button><button type="button" aria-pressed="false">Agent</button></div></div>
+        <div class="sec">Waiting on you <span class="n">1</span></div>
+        <div class="ask">
+          <div class="head">Ship issue #3</div>
+          <p>Merge pull request #4 into develop?</p>
+          <div class="btns"><button class="btn primary" type="button">Allow</button><button class="btn" type="button">Read the diff</button></div>
+        </div>
+        <div class="elsewhere">2 more waiting in other projects<span class="link">Clear the filter</span></div>
+        <div class="sec">Today</div>
+        <div class="row on"><span class="mk"><svg class="m-orang"><use href="#cld"></use></svg></span><span><b>Ship issue #3 <span class="tag wait">Gate</span></b><small>run 1 · step 12 of 14</small></span><time>now <span class="dot"></span></time></div>
+        <div class="row machine"><span class="sq p-acme">OE</span><span><b>Orientation: Acme Website</b><small>polyphemus · I opened issue #3…</small></span><time>7m</time></div>
+        <div class="row machine"><span class="sq p-acme">OE</span><span><b>Feedback: contact form sends nothing</b><small>polyphemus · from Alex</small></span><time>9m</time></div>
+        <div class="newpill">3 new · tap to bring them in</div>
+      </div>
+
+      <div class="pane">
+        <div class="top"><span class="mk"><svg class="m-orang"><use href="#cld"></use></svg></span><h3>Ship issue #3</h3><span class="tag wait">Gate</span></div>
+        <div class="where-bar"><span class="chip"><span class="sq sm p-acme">OE</span>Acme Website</span><span>· Otter · YOLO</span></div>
+        <div class="bubble">Polyphemus’s instructions for Round 1 · Build</div>
+        <div class="bubble">Deleted docs/AWS-DEPLOY.md and pointed the design brief at Amplify. Committed as 4a91c2f.</div>
+        <div class="bubble you">hold on — take the merge tool off Planner first</div>
+      </div>
+
+      <aside class="side">
+        <div class="top"><h3>Work</h3></div>
+        <div class="card"><div class="rowline"><b>Ship issue #3</b><span class="tag wait">Gate</span></div><small>Run 1 · step 12 of 14</small></div>
+        <div class="steps">
+          <div class="s"><span class="ok"></span>Read the issue</div>
+          <div class="s"><span class="ok"></span>Make a worktree</div>
+          <div class="s"><span class="ok"></span>Plan</div>
+          <div class="s"><span class="ok"></span>Round 1 · Build</div>
+          <div class="s now"><span class="ok"></span>12 · Merge · needs you</div>
+        </div>
+        <p class="mono">Tapping the project chip in the header opens this project’s Setup, with the run still selected behind it.</p>
+      </aside>
+    </div>
+  </div>
+
+  <div class="frames">
+    <div>
+      <div class="phone">
+        <div class="col">
+          <div class="top"><span class="round">‹</span><h3>Acme Website</h3></div>
+          <div class="backbar">Back to <b>Ship issue #3</b><span class="go">Return</span></div>
+          <div class="tabs"><button type="button" aria-pressed="false">Work</button><button type="button" aria-pressed="true">Setup</button></div>
+          <div class="sec">What it can reach <span class="n">3</span></div>
+          <div class="card"><div class="rowline"><b>GitHub · Planner</b><span class="tag done">Working</span></div>
+            <small>9 tools · 3 that change things · owned by you</small>
+            <div class="tools"><span class="tool on">read issues</span><span class="tool on">read PRs</span><span class="tool on">comment</span><span class="tool on">open PR</span><span class="tool">merge PR</span><span class="tool">+5 more</span></div>
+            <small>Merge unticked just now. It takes effect on Otter’s next turn — the gate already waiting is unaffected.</small>
+          </div>
+          <div class="card"><div class="rowline"><b>GitHub · Builder</b><span class="tag done">Working</span></div><small>9 tools · 2 that change things</small></div>
+          <div class="card"><div class="rowline"><b>GitHub · Reviewer</b><span class="tag done">Working</span></div><small>9 tools · 2 that change things</small></div>
+          <div class="sec">Rules and memory</div>
+          <div class="card"><b>Rules</b><small>AGENTS.md · every agent here reads it first</small></div>
+          <div class="card"><b>Review</b><small>Nothing proposed</small></div>
+          <div class="sec">People and agents</div>
+          <div class="card"><b>Alex</b><small>owns this install · 1 agent works here</small></div>
+        </div>
+        <div class="tabbar">
+          <div class="nav on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h5M15 16h5"/><circle cx="16" cy="8" r="2.4"/><circle cx="12" cy="16" r="2.4"/></svg>Setup</div>
+        </div>
+      </div>
+      <p class="cap">At 400px the project replaces the thread, so a return bar carries the way back. It names the thread — not “back”.</p>
+    </div>
+    <div>
+      <div class="notes">
+        <div class="note"><b>The list never reorders under you</b><p>New and updated threads collect into a “3 new” pill instead of pushing the row you’re reading down the list. Anything <i>waiting on you</i> ignores the pill and arrives immediately, because that’s the one thing worth interrupting for.</p></div>
+        <div class="note"><b>Tool names collapse</b><p>A grant shows a count, then the tools that change things, then “+5 more”. Three GitHub identities cost three cards, not three screens.</p></div>
+        <div class="note"><b>Say when it takes effect</b><p>Every grant change states its scope in time: next turn, not retroactive, and never silently applied to a gate already waiting.</p></div>
+        <div class="note"><b>Two tabs, not three</b><p>Work and Conversations were one list split in two. Merging them removes the “which list is this thread in?” question that §2 exists to prevent.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 3 + 4 · Filtered phone, and waiting when arranged ═══════════ -->
+<section class="panel">
+  <h2>Journeys 3 and 4 · One project on a phone, and what happens to <i>Waiting on you</i></h2>
+  <p class="lead">Left: Home filtered to the Acme website. The chip is the filter — it’s always on screen, and the count beside it says what’s hidden. Right: grouped by project with a gate waiting. <b>Waiting on you is never grouped and never filtered away without saying so.</b></p>
+  <div class="frames">
+    <div>
+      <div class="phone">
+        <div class="col">
+          <div class="top"><h3>Home</h3><span class="round">⌕</span><span class="round primary">+</span></div>
+          <div class="chipbar">
+            <span class="chip"><span class="sq sm p-acme">OE</span>Acme Website<span class="x">×</span></span>
+            <span class="chip ghost">hiding 27 threads in 4 projects</span>
+          </div>
+          <div class="view"><span class="label">View</span><div class="seg"><button type="button" aria-pressed="false">Time</button><button type="button" aria-pressed="true">Kind</button><button type="button" aria-pressed="false">Agent</button></div></div>
+          <div class="sec">Waiting on you <span class="n">1</span></div>
+          <div class="ask">
+            <div class="head">Ship issue #3</div>
+            <p>Merge pull request #4 into develop?</p>
+            <div class="btns"><button class="btn primary" type="button">Allow</button><button class="btn" type="button">Read the diff</button></div>
+          </div>
+          <div class="elsewhere">2 more waiting in other projects<span class="link">Show all</span></div>
+          <div class="sec">Work <span class="n">2</span></div>
+          <div class="row on"><span class="mk"><svg class="m-orang"><use href="#cld"></use></svg></span><span><b>Ship issue #3 <span class="tag wait">Gate</span></b><small>run 1 · step 12 of 14</small></span><time>now <span class="dot"></span></time></div>
+          <div class="row"><span class="mk"><svg class="m-plan"><use href="#dia"></use></svg></span><span><b>Fix the contact form</b><small>work item · not started</small></span><time>9m</time></div>
+          <div class="sec">Conversations <span class="n">2</span></div>
+          <div class="row machine"><span class="sq p-acme">OE</span><span><b>Orientation: Acme Website</b><small>polyphemus · I opened issue #3…</small></span><time>7m</time></div>
+          <div class="row"><span class="sq none">—</span><span><b>What’s the deploy story?</b><small>you started this, 2d ago</small></span><time>2d</time></div>
+        </div>
+        <div class="tabbar">
+          <div class="nav on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h5M15 16h5"/><circle cx="16" cy="8" r="2.4"/><circle cx="12" cy="16" r="2.4"/></svg>Setup</div>
+        </div>
+      </div>
+      <p class="cap">Journey 3. Nothing from another project is on screen, the chip says a filter is on, and × turns it off.</p>
+    </div>
+
+    <div>
+      <div class="phone">
+        <div class="col">
+          <div class="top"><h3>Home</h3><span class="round">⌕</span><span class="round primary">+</span></div>
+          <div class="view"><span class="label">View</span><div class="seg"><button type="button" aria-pressed="false">Time</button><button type="button" aria-pressed="true">Project</button><button type="button" aria-pressed="false">Agent</button></div></div>
+          <div class="sec">Waiting on you <span class="n">3</span></div>
+          <div class="ask">
+            <div class="head"><span class="sq sm p-acme">OE</span>Ship issue #3<span class="where tag">Acme website</span></div>
+            <p>Merge pull request #4 into develop?</p>
+            <small>Waiting 4 minutes.</small>
+            <div class="btns"><button class="btn primary" type="button">Allow</button><button class="btn" type="button">Read the diff</button></div>
+          </div>
+          <div class="ask">
+            <div class="head"><span class="sq sm p-notion">ND</span>Notion sign-in expired<span class="where tag">Notion Docs</span></div>
+            <p>Sign in again so the weekly sync can run</p>
+            <div class="btns"><button class="btn primary" type="button">Sign in</button><button class="btn" type="button">What failed</button></div>
+          </div>
+          <div class="ask">
+            <div class="head"><span class="sq sm p-arcade">B</span>Q3 outreach list<span class="where tag">gamenight</span></div>
+            <p>Rowan claimed this 2 minutes ago</p>
+            <div class="btns"><button class="btn" type="button">Take it over</button></div>
+          </div>
+          <div class="group"><span class="sq sm p-acme">OE</span>Acme Website<span class="n">3</span><span class="open">Open</span></div>
+          <div class="row on"><span class="mk"><svg class="m-orang"><use href="#cld"></use></svg></span><span><b>Ship issue #3 <span class="tag wait">Gate</span></b><small>run 1 · step 12 of 14</small></span><time>now <span class="dot"></span></time></div>
+          <div class="row machine"><span class="sq p-acme">OE</span><span><b>Orientation: Acme Website</b><small>polyphemus</small></span><time>7m</time></div>
+          <div class="group"><span class="sq sm p-notion">ND</span>Notion Documentation<span class="n">2</span><span class="open">Open</span></div>
+          <div class="row"><span class="mk"><svg class="m-orang"><use href="#cld"></use></svg></span><span><b>@Otter … can you create</b><small>Rowan: the Notion page is live now</small></span><time>14h</time></div>
+        </div>
+        <div class="tabbar">
+          <div class="nav on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h5M15 16h5"/><circle cx="16" cy="8" r="2.4"/><circle cx="12" cy="16" r="2.4"/></svg>Setup</div>
+        </div>
+      </div>
+      <p class="cap">Journey 4. Grouping changes the rows below, never the cards above. Each card names its project, since the heading that would have said it is now further down.</p>
+    </div>
+  </div>
+  <div class="why"><b>The one place I think §4 is under-specified:</b> “Waiting on you stays on top, however the list is arranged” is enough for grouping, which hides nothing, but not for filtering, which does. A gate in another project sitting silently behind a filter is the worst failure this screen can have. So: <b>a filter never hides a waiting item without a line saying how many and where</b>, and that line clears the filter in one tap.</div>
+</section>
+
+<!-- ═══════════ 5 · Configure, then work ═══════════ -->
+<section class="panel">
+  <h2>Journey 5 · Configure, then work</h2>
+  <p class="lead">A new project opens on <b>Setup</b> and stays there until it’s set up; after that it opens on <b>Work</b> and never sends you back. “Set this project up” isn’t a section competing with the others — while it’s unfinished it’s the only thing on the tab.</p>
+  <div class="frames">
+    <div>
+      <div class="phone">
+        <div class="col">
+          <div class="top"><span class="round">‹</span><h3>Acme Website</h3></div>
+          <div class="tabs"><button type="button" aria-pressed="false">Work</button><button type="button" aria-pressed="true">Setup</button></div>
+          <div class="card"><b>Set this project up</b><small>Otter read the folder and drafted rules and three notes. Nothing is saved until you keep them.</small>
+            <div class="btns"><button class="btn primary" type="button">Review 4 proposals</button><button class="btn" type="button">Skip</button></div>
+          </div>
+          <div class="sec">Still to do <span class="n">2</span></div>
+          <div class="card"><div class="rowline"><b>Grant a connection</b><span class="tag">Needed</span></div><small>GitHub is connected but not granted here</small></div>
+          <div class="card"><div class="rowline"><b>Add an agent</b><span class="tag plain">Optional</span></div><small>Otter works everywhere and can cover this</small></div>
+          <div class="sec">Ready</div>
+          <div class="card"><b>Folder</b><small class="mono">~/projects/acme-website</small></div>
+          <div class="card"><b>People</b><small>Alex · owns this install</small></div>
+        </div>
+        <div class="tabbar">
+          <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+          <div class="nav on"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h5M15 16h5"/><circle cx="16" cy="8" r="2.4"/><circle cx="12" cy="16" r="2.4"/></svg>Setup</div>
+        </div>
+      </div>
+      <p class="cap">Before setup. Work is still a tab, and tapping it says “nothing here yet — finish setting up”.</p>
+    </div>
+
+    <div>
+      <div class="phone">
+        <div class="col">
+          <div class="top"><span class="round">‹</span><h3>Acme Website</h3><span class="round primary">+</span></div>
+          <div class="tabs"><button type="button" aria-pressed="true">Work</button><button type="button" aria-pressed="false">Setup</button></div>
+          <div class="sec">Waiting on you <span class="n">1</span></div>
+          <div class="ask">
+            <div class="head">Ship issue #3</div>
+            <p>Merge pull request #4 into develop?</p>
+            <div class="btns"><button class="btn primary" type="button">Allow</button><button class="btn" type="button">Read the diff</button></div>
+          </div>
+          <div class="sec">Work <span class="n">2</span></div>
+          <div class="row on"><span class="mk"><svg class="m-orang"><use href="#cld"></use></svg></span><span><b>Ship issue #3 <span class="tag wait">Gate</span></b><small>run 1 · step 12 of 14</small></span><time>now <span class="dot"></span></time></div>
+          <div class="row"><span class="mk"><svg class="m-plan"><use href="#dia"></use></svg></span><span><b>Fix the contact form</b><small>work item · not started</small></span><time>9m</time></div>
+          <div class="sec">Conversations <span class="n">2</span></div>
+          <div class="row machine"><span class="sq p-acme">OE</span><span><b>Orientation: Acme Website</b><small>polyphemus</small></span><time>7m</time></div>
+          <div class="row"><span class="sq none">—</span><span><b>What’s the deploy story?</b><small>you started this</small></span><time>2d</time></div>
+          <div class="card"><b>+ starts something here</b><small>Message an agent · Add feedback or an idea · Start a workflow</small></div>
+        </div>
+        <div class="tabbar">
+          <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+          <div class="nav on"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h5M15 16h5"/><circle cx="16" cy="8" r="2.4"/><circle cx="12" cy="16" r="2.4"/></svg>Setup</div>
+        </div>
+      </div>
+      <p class="cap">After setup. The two buttons are gone: <i>Add feedback or an idea</i> and <i>Start a workflow</i> live behind the same + as everywhere else.</p>
+    </div>
+
+    <div>
+      <div class="notes">
+        <div class="note"><b>Two tabs: Work, Setup</b><p>Doing and configuring — exactly the split the brief diagnoses in problem 4. Work is the Home list with this project’s filter on, grouped by kind by default.</p></div>
+        <div class="note"><b>The + is the only way to start</b><p>Three permanent buttons across two screens become one button with three choices. It matches Home’s +, so there’s one thing to learn.</p></div>
+        <div class="note"><b>Setup keeps its order</b><p>What needs doing, then what it can reach, then rules and memory, then people, agents and folder. Grants show counts, and tool names open on demand.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 6 · A busy day + marks + icon ═══════════ -->
+<section class="panel">
+  <h2>Journey 6 · A busy day, and two smaller fixes</h2>
+  <p class="lead">40 threads, 12 of them made by polyphemus, 2 runs going, 3 things waiting. Rows polyphemus started are <b>rolled up when they’re consecutive and quiet</b> — never hidden, always counted, and never rolled up if something is waiting on you inside.</p>
+  <div class="frames">
+    <div>
+      <div class="phone">
+        <div class="col">
+          <div class="top"><h3>Home</h3><span class="round">⌕</span><span class="round primary">+</span></div>
+          <div class="view"><span class="label">View</span><div class="seg"><button type="button" aria-pressed="true">Time</button><button type="button" aria-pressed="false">Project</button><button type="button" aria-pressed="false">Agent</button></div></div>
+          <div class="sec">Waiting on you <span class="n">3</span></div>
+          <div class="ask">
+            <div class="head"><span class="sq sm p-acme">OE</span>Ship issue #3<span class="where tag">Acme website</span></div>
+            <p>Merge pull request #4 into develop?</p>
+            <div class="btns"><button class="btn primary" type="button">Allow</button><button class="btn" type="button">Read the diff</button></div>
+          </div>
+          <div class="card"><b>2 more waiting</b><small>Notion sign-in expired · Rowan claimed the Q3 outreach gate</small></div>
+
+          <div class="sec">Working now <span class="n">2</span></div>
+          <div class="row"><span class="mk"><svg class="m-build"><use href="#hex"></use></svg></span><span><b>Rebuild the exports page</b><small>Reports · run 2 · step 3 of 7</small></span><time>now</time></div>
+          <div class="row on"><span class="mk"><svg class="m-orang"><use href="#cld"></use></svg></span><span><b>Ship issue #3 <span class="tag wait">Gate</span></b><small>Acme website · step 12 of 14</small></span><time>now <span class="dot"></span></time></div>
+
+          <div class="sec">Today</div>
+          <div class="roll"><span class="stackmk"><span class="sq p-acme">OE</span><span class="sq p-notion">ND</span></span><span><b>6 requests came in</b><small>polyphemus · Acme website, Notion Docs · 9m–2h ago</small></span><span class="open">Open</span></div>
+          <div class="row"><span class="face">E</span><span><b>Rowan and Otter</b><small>gamenight · Rowan: ah, that explains it!</small></span><time>3h</time></div>
+          <div class="roll"><span class="stackmk"><span class="sq p-reports">R</span><span class="sq p-polyphemus">h</span></span><span><b>4 work items from an intake</b><small>polyphemus · Reports · none started</small></span><span class="open">Open</span></div>
+          <div class="row"><span class="sq none">—</span><span><b>just chat</b><small>polyphemus · you started this</small></span><time>5h</time></div>
+          <div class="row machine"><span class="sq p-acme">OE</span><span><b>Orientation: Acme Website</b><small>polyphemus · I opened issue #3…</small></span><time>7h</time></div>
+        </div>
+        <div class="tabbar">
+          <div class="nav on"><svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/></svg>Home</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="7" rx="2"/><rect x="4" y="13" width="16" height="7" rx="2"/></svg>Projects</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+          <div class="nav"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h5M15 16h5"/><circle cx="16" cy="8" r="2.4"/><circle cx="12" cy="16" r="2.4"/></svg>Setup</div>
+        </div>
+      </div>
+      <p class="cap">Two roll-ups stand in for ten rows. A roll-up never spans projects silently — its mark stacks the projects it covers and its line two names them.</p>
+    </div>
+
+    <div>
+      <div class="notes">
+        <div class="note"><b>A mark is never a model</b><p>Today a thread with no agent borrows its model’s mark, so most rows lead with the same orange hexagon. The mark slot answers “whose is this”: an agent’s mark, or a person’s face, or the project’s squircle, or a dashed outline if it has none. Models aren’t identities and never appear in the slot.</p></div>
+        <div class="note"><b>Roll-up rules</b><p>Three or more consecutive threads, all started by polyphemus, all quiet, all the same kind. Opening one expands it in place. Anything waiting on a person breaks the run and shows as its own row.</p></div>
+        <div class="note"><b>Started-by is on line two</b><p>“polyphemus · …” or “you started this”. It’s prose, not a fourth signal, so the three-signal rule holds.</p></div>
+        <div class="note"><b>No project stripe</b><p>I considered a coloured edge on each row for its project. It reads as a fourth signal and fights the amber dot. The project’s colour already arrives via the group heading, the filter chip, or the squircle when there’s no agent.</p></div>
+      </div>
+      <div class="why">
+        <b>Setup’s icon.</b> Sliders: two horizontal tracks with a knob on each. It reads as settings at 19px, it doesn’t collide with Team’s two people, and it isn’t the gear that every other app uses for a menu you close immediately.
+        <div class="iconrow">
+          <div class="icondemo"><svg viewBox="0 0 24 24"><path d="M4 8h9M19 8h1M4 16h5M15 16h5"/><circle cx="16" cy="8" r="2.4"/><circle cx="12" cy="16" r="2.4"/></svg>Sliders · yes</div>
+          <div class="icondemo bad"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Person · today</div>
+          <div class="icondemo bad"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 19c1-3 3.5-4.5 6-4.5s5 1.5 6 4.5M15 15c2.5 0 4.5 1 5.5 3.5"/></svg>Team</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+<script>
+  document.getElementById('theme').addEventListener('click', function () {
+    var root = document.documentElement;
+    var dark = root.classList.contains('dark') || (!root.classList.contains('light') && matchMedia('(prefers-color-scheme: dark)').matches);
+    root.classList.toggle('dark', !dark);
+    root.classList.toggle('light', dark);
+  });
+</script>
+</body>
+</html>

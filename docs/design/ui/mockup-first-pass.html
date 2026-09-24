@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="en" class="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>polyphemus — proposed UI</title>
+<!--
+  A proposal, not a snapshot. Built on the tokens and class names from polyphemus-current-ui.html
+  so the diff against the real app is small. No inline style attributes anywhere (CSP).
+  Two stylesheets below: #app-css is what would go into the app; #mockup-css is the preview
+  frame and is not part of the product.
+-->
+<style id="app-css">
+:root{
+  --ground:#edeff2; --surface:#ffffff; --well:#f2f4f6; --well-2:#e7eaee;
+  --ink:#151922; --muted:#677285; --line:#e2e6eb;
+  --accent:#2f5fe0; --accent-ink:#ffffff;
+  --attention:#d97706; --danger:#d0342c; --good:#16a34a;
+  --shadow:0 1px 2px rgba(21,25,34,.06), 0 8px 20px -10px rgba(21,25,34,.28);
+  --display:'Bricolage Grotesque','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --ui:'Figtree','Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,'SFMono-Regular','JetBrains Mono',Menlo,monospace;
+  color-scheme:light;
+}
+html.dark{
+  --ground:#0d1015; --surface:#151a21; --well:#1c222b; --well-2:#252c37;
+  --ink:#e8ecf1; --muted:#97a1b2; --line:#28303b;
+  --accent:#7096f4; --accent-ink:#0d1015;
+  --attention:#f0a13b; --danger:#f07167; --good:#4ade80;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 20px -10px rgba(0,0,0,.6);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+button,select,textarea,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none !important}
+
+/* ── Top bar ─────────────────────────────────────────────────────── */
+.bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:8px;padding:10px 14px 8px;background:var(--surface)}
+.bar-mid{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+.bar-side{display:flex;gap:8px}
+.screen-title{font:600 17px/1.2 var(--display)}
+.round{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;padding:0;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.round.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.brand{display:flex;align-items:center;gap:8px;border:0;background:none;padding:4px;font:700 21px/1 var(--display);letter-spacing:-.01em}
+.brand svg{width:28px;height:28px}
+.live{width:8px;height:8px;border-radius:50%;background:var(--good)}
+.pill{display:flex;align-items:center;gap:8px;min-width:0;background:var(--well);border:1px solid var(--line);border-radius:999px;padding:4px 12px 4px 5px;font-weight:650}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ico.mini{width:16px;height:16px}
+.main{padding:2px 16px 96px}
+.main.plain{padding-bottom:32px}
+.main.with-composer{padding-bottom:132px}
+
+/* ── Lists ───────────────────────────────────────────────────────── */
+.sec{margin:20px 4px 6px;display:flex;align-items:center;gap:8px;font:600 11.5px/1 var(--ui);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.sec:first-child{margin-top:8px}
+.sec .count{margin-left:auto;font-variant-numeric:tabular-nums}
+.sec .linky{margin-left:auto}
+.list{display:grid}
+.row{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:10px 4px;border-radius:14px}
+button.row:hover{background:var(--well)}
+.row-main{display:grid;gap:2px;min-width:0}
+.row-top{display:flex;align-items:baseline;gap:8px;min-width:0}
+.row-top b{font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-top time,.row-top .right{margin-left:auto;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.row-sub{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:14px;min-width:0}
+.row-sub .text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.tag{flex:none;font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:6px;background:var(--well);color:var(--muted);white-space:nowrap}
+.tag.warn{color:var(--attention);background:color-mix(in srgb,var(--attention) 14%,transparent)}
+.tag.good{color:var(--good);background:color-mix(in srgb,var(--good) 13%,transparent)}
+.dot{flex:none;width:9px;height:9px;border-radius:50%}
+.dot.needs{background:var(--attention);box-shadow:0 0 0 3px color-mix(in srgb,var(--attention) 22%,transparent)}
+.dot.working{background:var(--accent);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.3}}
+.empty{color:var(--muted);font-size:14.5px;padding:6px 4px;margin:0}
+.linky{background:none;border:0;color:var(--accent);font:600 14px/1 var(--ui);padding:8px 4px;justify-self:start}
+.hint{color:var(--muted);font-size:13.5px;margin:10px 4px 0}
+
+/* NEW — state marks on a thread row. A thread is one noun; these are its attributes. */
+.row-top .state{flex:none;font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:3px}
+.row-top .state svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.row.done .row-top b{font-weight:550;color:var(--muted)}
+.row.done .marks{opacity:.62}
+/* NEW — a thread's mark is composed from its members' marks. */
+.marks{position:relative;width:44px;height:44px;flex:none}
+.marks svg{position:absolute;inset:0;width:44px;height:44px}
+.marks.two svg:first-child{width:30px;height:30px;top:0;left:0}
+.marks.two svg:last-child{width:30px;height:30px;top:14px;left:14px}
+.marks.three svg:nth-child(1){width:26px;height:26px;top:0;left:9px}
+.marks.three svg:nth-child(2){width:26px;height:26px;top:17px;left:0}
+.marks.three svg:nth-child(3){width:26px;height:26px;top:17px;left:18px}
+.marks.small,.marks.small svg{width:26px;height:26px}
+.marks.tiny,.marks.tiny svg{width:20px;height:20px}
+
+/* ── Cards that need you ─────────────────────────────────────────── */
+.ask{background:var(--well);border:1px solid color-mix(in srgb,var(--attention) 50%,var(--line));border-radius:18px;padding:14px;display:grid;gap:10px;margin-bottom:10px}
+.ask-head{display:flex;align-items:center;gap:8px;min-width:0;background:none;border:0;padding:0;text-align:left;font-size:14px;width:100%}
+.ask-head b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ask-head .tag{margin-left:auto;background:var(--surface)}
+.ask p{margin:0;font-weight:600}
+.ask code{font:13px/1.45 var(--mono);background:var(--surface);border-radius:9px;padding:7px 9px;overflow-wrap:anywhere;white-space:pre-wrap}
+.ask .cost{margin:0;font-weight:400;font-size:13.5px;color:var(--muted)}
+.ask.calm{border-color:var(--line)}
+.buttons{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 15px;font-weight:600;font-size:14.5px;min-height:44px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--danger)}
+.btn.wide{width:100%}
+.btn.small{padding:7px 11px;font-size:13.5px;min-height:0;white-space:nowrap}
+.banner{background:var(--well);border-radius:18px;padding:14px;display:grid;gap:10px;margin:6px 0 4px}
+.banner p{margin:0}
+
+/* ── Grouped cards ───────────────────────────────────────────────── */
+.card{background:var(--well);border-radius:18px;overflow:hidden}
+.card+.card{margin-top:12px}
+.item{display:flex;align-items:center;gap:12px;padding:13px 14px;width:100%;border:0;background:none;text-align:left;font-size:15px;min-height:52px}
+.item+.item{border-top:1px solid var(--line)}
+.item .grow{flex:1;min-width:0;display:grid;gap:1px}
+.item small{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.item .value{color:var(--muted);font-size:14px;text-align:right}
+.item .chev{color:var(--muted);flex:none}
+.item.link{color:var(--accent);font-weight:600}
+.item.warn .value{color:var(--attention);font-weight:600}
+.facts{display:flex;flex-direction:column}
+.fact{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line);font-size:15px}
+.fact:last-child{border-bottom:0}
+.fact span{color:var(--muted);flex:none}
+.fact b{text-align:right;min-width:0;overflow-wrap:anywhere}
+.path{font:12.5px/1.4 var(--mono);color:var(--muted);overflow-wrap:anywhere}
+.stats{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px;font-size:12.5px;color:var(--muted)}
+.stats .warn{color:var(--attention);font-weight:600}
+.squircle{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;color:#fff;font:700 16px/1 var(--display);flex:none}
+.sq-polyphemus{background:#3E7BFA}.sq-arcade{background:#E98A12}.sq-side{background:#1FA37A}
+
+/* ── A conversation ──────────────────────────────────────────────── */
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:2px 0 8px}
+.chip,.chip-select{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:14px;font-weight:600;min-height:38px}
+.chip.yolo{background:var(--danger);color:#fff;border-color:var(--danger)}
+/* NEW — one calm status line replaces the row of chips. Only non-default state shows. */
+.thread-state{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 4px 10px;font-size:13.5px;color:var(--muted)}
+.thread-state .bullet{width:3px;height:3px;border-radius:50%;background:var(--muted);flex:none}
+.thread-state .warnish{color:var(--attention);font-weight:600}
+#log{display:grid;gap:10px;padding-top:4px}
+.msg{max-width:88%;padding:10px 14px;border-radius:20px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:15.5px;line-height:1.45}
+.msg.you{justify-self:end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:6px}
+.msg.bot{justify-self:start;background:var(--well);border-bottom-left-radius:6px}
+/* NEW — who is speaking, only when a thread has more than one agent. */
+.speaker{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);padding:0 6px;justify-self:start}
+.speaker b{color:var(--ink);font-weight:650}
+.speaker .lead{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+/* NEW — an agent talking to an agent, not to me. Inset, quieter, and always visible. */
+.aside-msg{justify-self:stretch;margin-left:22px;border-left:2px solid var(--line);padding:2px 0 2px 12px;display:grid;gap:4px}
+.aside-msg .who{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.aside-msg .who b{color:var(--ink);font-weight:650}
+.aside-msg .what{font-size:14.5px;color:var(--ink)}
+.activity{justify-self:stretch;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.activity summary{list-style:none;cursor:pointer;display:flex;align-items:flex-start;gap:8px;padding:9px 12px;color:var(--muted);font-size:13.5px}
+.activity summary::-webkit-details-marker{display:none}
+.activity .sum-text{flex:1;min-width:0;display:grid;gap:1px}
+.activity .what{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:500}
+.activity .tokens{font-size:12.5px;font-variant-numeric:tabular-nums}
+.activity-body{display:grid;gap:6px;padding:8px 10px 10px;border-top:1px solid var(--line)}
+.tool{font:13px/1.4 var(--mono);color:var(--muted);overflow-wrap:anywhere}
+.tool b{color:var(--ink);font-weight:500}
+.day{justify-self:center;font-size:12px;font-weight:600;color:var(--muted);background:var(--well);border-radius:999px;padding:3px 11px;margin:10px 0 2px}
+.info{color:var(--muted);font-size:13px;padding:0 6px;text-align:center}
+.composer{display:flex;align-items:flex-end;gap:8px;padding:8px 12px 12px;background:var(--surface);border-top:1px solid var(--line)}
+.composer label{flex:1;min-width:0;display:flex;background:var(--well);border-radius:22px;padding:4px 14px}
+.composer textarea{flex:1;min-width:0;border:0;background:none;resize:none;font-size:16px;line-height:1.4;padding:8px 0;max-height:10rem}
+
+/* ── Tabs ────────────────────────────────────────────────────────── */
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);background:var(--surface);padding:6px 6px 10px}
+.tabs button{border:0;background:none;display:grid;justify-items:center;gap:3px;padding:6px 0;font-size:12px;font-weight:600;color:var(--muted);position:relative}
+.tabs button[aria-current='page']{color:var(--accent)}
+.tabs .badge{position:absolute;top:2px;left:calc(50% + 6px);min-width:17px;height:17px;border-radius:9px;background:var(--attention);color:#fff;font:700 10.5px/17px var(--ui);padding:0 4px}
+
+/* ── Forms and pickers ───────────────────────────────────────────── */
+.field{display:grid;gap:6px;margin:14px 0}
+.field>span{font-size:13px;font-weight:600;color:var(--muted);padding-left:4px}
+.field select,.field textarea,.field input{width:100%;border:1px solid var(--line);background:var(--well);border-radius:14px;padding:12px 14px;font-size:16px}
+.segmented{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;background:var(--well);border-radius:14px;padding:4px}
+.segmented button{border:0;background:none;border-radius:10px;padding:10px 6px;font-weight:600;font-size:14.5px}
+.segmented button[aria-pressed='true']{background:var(--surface);box-shadow:var(--shadow)}
+.segmented button.yolo[aria-pressed='true']{background:var(--danger);color:#fff}
+.sheet-wrap{position:absolute;inset:0;z-index:20;background:rgba(8,11,16,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--ground);border-radius:20px 20px 0 0;width:100%;max-height:84%;display:flex;flex-direction:column}
+.sheet-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 16px 8px}
+.sheet-top b{font:600 17px/1.2 var(--display)}
+.sheet-body{overflow-y:auto;padding:0 16px 20px}
+.row.pick{border:1.5px solid transparent}
+.row.pick[aria-pressed='true']{border-color:var(--accent);background:var(--well)}
+
+/* NEW — the draft line above the composer when starting something. */
+.draft{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 12px 0}
+.draft .chip{min-height:32px;padding:5px 11px;font-size:13.5px;display:inline-flex;align-items:center;gap:6px}
+.draft .chip.ghost{background:var(--well);color:var(--muted);font-weight:600;border-style:dashed}
+.mention{position:absolute;left:12px;right:12px;bottom:74px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;z-index:6}
+.mention .row{border-radius:0;padding:9px 12px}
+.mention .row+.row{border-top:1px solid var(--line)}
+
+/* NEW — a run: a graph of steps, each step a thread. */
+.steps{display:flex;flex-direction:column;gap:10px}
+.step{display:grid;grid-template-columns:34px minmax(0,1fr);gap:4px 14px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+.step-n{grid-row:span 2;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--well);color:var(--accent);font:600 15px/1 var(--mono)}
+.step.done .step-n{background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good)}
+.step.gate{border-color:color-mix(in srgb,var(--attention) 50%,var(--line))}
+.step.gate .step-n{background:color-mix(in srgb,var(--attention) 16%,transparent);color:var(--attention)}
+.step.todo{opacity:.6}
+.step-body{display:flex;flex-direction:column;gap:6px;min-width:0}
+.step-body b{font:600 16px/1.3 var(--ui)}
+.step-body small{color:var(--muted);font-size:13.5px}
+.step-link{display:flex;align-items:center;gap:7px;font-size:13.5px;color:var(--accent);font-weight:600}
+
+/* ── Desktop ─────────────────────────────────────────────────────── */
+.desk{display:grid;grid-template-columns:86px 24rem minmax(0,1fr);align-items:start;background:var(--surface)}
+.desk .rail-inner{height:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px 16px;border-right:1px solid var(--line)}
+.desk .rail-inner>button:not(.rail-brand){width:100%;border:0;background:none;border-radius:14px;padding:9px 0;display:grid;justify-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--muted);position:relative}
+.desk .rail-inner>button[aria-current='page']{background:var(--well-2);color:var(--accent)}
+.desk .rail-brand{background:none;border:0;padding:6px;margin-bottom:10px;display:grid;place-items:center}
+.desk .rail-inner .badge{position:absolute;top:4px;left:calc(50% + 6px);min-width:17px;height:17px;border-radius:9px;background:var(--attention);color:#fff;font:700 10.5px/17px var(--ui);padding:0 4px}
+.desk #sidebar{border-right:1px solid var(--line);overflow:hidden}
+.desk .main{padding-bottom:24px}
+.desk .row{padding:8px 8px}
+.desk .row[aria-current='true']{background:var(--well-2)}
+.desk .detail{border-left:1px solid var(--line)}
+.desk-cols{display:grid;grid-template-columns:minmax(0,1fr) 20rem}
+</style>
+
+<style id="mockup-css">
+/* Preview chrome. Not part of the app. */
+body{margin:0;background:var(--ground);color:var(--ink);font:16px/1.5 var(--ui)}
+.preview{position:sticky;top:0;z-index:50;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:#101318;color:#fff;font-size:12.5px}
+.preview strong{font:700 13px/1 var(--display)}
+.preview .sep{width:1px;height:18px;background:#2b313a}
+.preview button{background:#20252d;border:1px solid #2f3641;color:#d7dce3;padding:5px 10px;border-radius:999px;font-size:12.5px}
+.preview button[aria-pressed='true']{background:#fff;color:#101318;border-color:#fff}
+.preview span.note{color:#8b94a2}
+.stage{padding:26px 16px 80px;display:flex;justify-content:center}
+.screen[hidden]{display:none}
+.phone{width:400px;max-width:100%;min-height:820px;background:var(--surface);border:1px solid var(--line);border-radius:26px;box-shadow:var(--shadow);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.phone .main{flex:1}
+.deskframe{width:1200px;max-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.caption{max-width:400px;margin:0 auto 14px;color:var(--muted);font-size:13.5px}
+.caption b{color:var(--ink)}
+.wide-caption{max-width:1200px}
+.annot{display:grid;gap:2px;margin:2px 4px 12px;padding:10px 12px;border-left:2px solid var(--accent);background:var(--well);border-radius:0 12px 12px 0;font-size:13px;color:var(--muted)}
+.annot b{color:var(--ink);font-weight:650;font-size:13.5px}
+.stack-two{display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="m-hex" viewBox="0 0 48 48"><path d="M24 3.5 42 14v20L24 44.5 6 34V14z"/><rect x="15" y="18" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+    <symbol id="m-diamond" viewBox="0 0 48 48"><path d="M24 3.5 44.5 24 24 44.5 3.5 24z"/><rect x="15" y="18" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+    <symbol id="m-circle" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20.5"/><rect x="15" y="18" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+    <symbol id="m-cloud" viewBox="0 0 48 48"><path d="M14 39a10 10 0 0 1-.7-20 12.5 12.5 0 0 1 23.2 2.1A9 9 0 0 1 34.5 39z"/><rect x="15" y="24" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+    <symbol id="m-pill" viewBox="0 0 48 48"><rect x="6" y="10" width="36" height="28" rx="14"/><rect x="15" y="21" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+    <symbol id="m-square" viewBox="0 0 48 48"><rect x="6" y="6" width="36" height="36" rx="9"/><rect x="15" y="19" width="18" height="5.5" rx="2.75" class="bar-fill"/></symbol>
+  </defs>
+</svg>
+<style>
+  .mk{stroke-width:4;stroke-linejoin:round}
+  .mk .bar-fill{fill:#fff;stroke:none}
+  .c-blue{fill:#3E7BFA;stroke:#3E7BFA}
+  .c-violet{fill:#8A5CF6;stroke:#8A5CF6}
+  .c-teal{fill:#0F9F90;stroke:#0F9F90}
+  .c-amber{fill:#E98A12;stroke:#E98A12}
+  .c-green{fill:#1FA37A;stroke:#1FA37A}
+  .c-slate{fill:#5B6475;stroke:#5B6475}
+  .ring{fill:none;stroke:var(--surface);stroke-width:3}
+</style>
+
+<div class="preview">
+  <strong>polyphemus — proposed UI</strong>
+  <span class="sep"></span>
+  <button data-go="home" aria-pressed="true">Home</button>
+  <button data-go="shapes" aria-pressed="false">Thread shapes</button>
+  <button data-go="start" aria-pressed="false">Start something</button>
+  <button data-go="thread" aria-pressed="false">Thread · 3 agents</button>
+  <button data-go="project" aria-pressed="false">Project</button>
+  <button data-go="agent" aria-pressed="false">Agent</button>
+  <button data-go="run" aria-pressed="false">Run</button>
+  <button data-go="you" aria-pressed="false">You</button>
+  <button data-go="desktop" aria-pressed="false">Desktop</button>
+  <span class="sep"></span>
+  <button id="theme">Dark</button>
+  <span class="note">preview chrome, not part of the app</span>
+</div>
+
+<div class="stage">
+
+<!-- ══════════════════════════════ HOME ══════════════════════════════ -->
+<section class="screen" data-screen="home">
+  <div>
+    <p class="caption"><b>Home.</b> One list, newest first, across every project. Needs you sits on top of the same list rather than in its own place. A project is a tag, an agent is the mark.</p>
+    <div class="phone">
+      <header class="bar">
+        <button class="brand"><svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="13" fill="var(--ink)"></rect><path d="M15.5 12v24M15.5 25c0-5.2 3.8-8.3 8.8-8.3s8.8 3.1 8.8 8.3v11" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"></path></svg><span>polyphemus</span><span class="live"></span></button>
+        <div class="bar-mid"></div>
+        <div class="bar-side">
+          <button class="round" aria-label="Search"><svg viewBox="0 0 24 24" class="ico"><circle cx="10.5" cy="10.5" r="6"></circle><path d="m15 15 5 5"></path></svg></button>
+          <button class="round primary" aria-label="Start something"><svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"></path></svg></button>
+        </div>
+      </header>
+      <main class="main">
+
+        <div class="sec">Waiting on you<span class="count">3</span></div>
+
+        <div class="ask">
+          <button class="ask-head"><svg class="mk c-blue" width="24" height="24"><use href="#m-hex"></use></svg><b>Flaky login test</b><span class="tag">polyphemus</span></button>
+          <p>Waiting for your OK to run bash</p>
+          <code>pnpm test --update packages/core/test/login.test.ts</code>
+          <p class="cost">Writes to 1 test file. Nothing leaves your computer.</p>
+          <div class="buttons"><button class="btn primary">Allow</button><button class="btn">Always for this thread</button><button class="btn danger">Deny</button></div>
+        </div>
+
+        <div class="ask">
+          <button class="ask-head"><svg class="mk c-amber" width="24" height="24"><use href="#m-cloud"></use></svg><b>Q3 outreach list</b><span class="tag">Game Night</span></button>
+          <p>BD ran out of its ChatGPT allowance mid-turn</p>
+          <p class="cost">Its backup is claude-opus-5 on your Claude subscription — 34% used this week, no extra charge. Waiting since 2:14 PM.</p>
+          <div class="buttons"><button class="btn primary">Use the backup</button><button class="btn">Wait for 8:00 AM reset</button><button class="btn">Pick another</button></div>
+        </div>
+
+        <div class="ask calm">
+          <button class="ask-head"><svg class="mk c-slate" width="24" height="24"><use href="#m-pill"></use></svg><b>Steward · 2 proposals</b><span class="tag">polyphemus</span></button>
+          <p>Suggested edits to your rules and notes</p>
+          <p class="cost">“Builder keeps re-reading the schema. Add it to the project notes.” Nothing changes until you keep it.</p>
+          <div class="buttons"><button class="btn">Read them</button><button class="btn">Later</button></div>
+        </div>
+
+        <div class="sec">Working now<span class="count">1</span></div>
+        <div class="list">
+          <button class="row">
+            <span class="marks"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Models &amp; providers from the mockup</b><time>now</time></span>
+              <span class="row-sub"><span class="text">polyphemus · Wiring the Connections tab to /api/providers…</span><span class="dot working"></span></span>
+            </span>
+          </button>
+        </div>
+
+        <div class="sec">Earlier today</div>
+        <div class="list">
+
+          <button class="row">
+            <span class="marks two"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Review: thread archive + search</b><time>22m</time></span>
+              <span class="row-sub"><span class="text">polyphemus · Reviewer: two findings, the rename no longer bumps recency</span></span>
+            </span>
+          </button>
+
+          <button class="row">
+            <span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Q3 outreach list</b><span class="state" title="Paused"><svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"></path></svg></span><time>2h</time></span>
+              <span class="row-sub"><span class="text">Game Night · 52 accounts pulled, 4 skipped as recently contacted</span><span class="dot needs"></span></span>
+            </span>
+          </button>
+
+          <button class="row done">
+            <span class="marks"><svg class="mk c-teal"><use href="#m-circle"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>How do other harnesses do memory?</b><span class="state" title="Finished"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10"></path></svg></span><time>4h</time></span>
+              <span class="row-sub"><span class="text">Three camps: files the agent edits, a vector store, consolidation on a schedule</span></span>
+            </span>
+          </button>
+
+          <button class="row">
+            <span class="marks three"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg><svg class="mk c-teal"><use href="#m-circle"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Ticket 412 → merged PR</b><span class="state">run</span><time>5h</time></span>
+              <span class="row-sub"><span class="text">polyphemus · Step 3 of 5 · waiting for your OK to merge</span><span class="dot needs"></span></span>
+            </span>
+          </button>
+
+        </div>
+
+        <div class="sec">Yesterday</div>
+        <div class="list">
+          <button class="row">
+            <span class="marks"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Planning the next milestone</b><span class="state" title="Kept"><svg viewBox="0 0 24 24"><path d="M12 3v10M8 7l4-4 4 4M5 20h14"></path></svg></span><time>1d</time></span>
+              <span class="row-sub"><span class="text">polyphemus · Home as the front door comes after threads you can manage</span></span>
+            </span>
+          </button>
+          <button class="row done">
+            <span class="marks"><svg class="mk c-green"><use href="#m-circle"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Level 3 boss feels unfair</b><span class="state" title="Finished"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10"></path></svg></span><time>2d</time></span>
+              <span class="row-sub"><span class="text">Side Quest · Halved the second phase’s projectile speed and added a tell</span></span>
+            </span>
+          </button>
+          <button class="row done">
+            <span class="marks"><svg class="mk c-slate"><use href="#m-pill"></use></svg></span>
+            <span class="row-main">
+              <span class="row-top"><b>Nightly review</b><span class="state">routine</span><time>2d</time></span>
+              <span class="row-sub"><span class="text">polyphemus · Nothing to report. Next run tonight at 2:00 AM.</span></span>
+            </span>
+          </button>
+        </div>
+
+        <button class="linky">Archived threads</button>
+      </main>
+      <nav class="tabs">
+        <button aria-current="page"><svg viewBox="0 0 24 24" class="ico"><path d="M4 11.5 12 5l8 6.5V20H4z"></path></svg>Home</button>
+        <button><svg viewBox="0 0 24 24" class="ico"><path d="M4 7h5l2 2.5h9V19H4z"></path></svg>Work</button>
+        <button><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="8" r="3.4"></circle><path d="M4.5 20c0-4 3.4-6 7.5-6s7.5 2 7.5 6"></path></svg>You</button>
+      </nav>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ THREAD SHAPES ═════════════════════════ -->
+<section class="screen" data-screen="shapes" hidden>
+  <div>
+    <p class="caption"><b>One noun, six shapes.</b> Everything below is a thread. What differs is the mark, one small state glyph, and what the second line says. No channels, no task type.</p>
+    <div class="phone">
+      <header class="bar"><div class="bar-mid"><span class="screen-title">A thread row, six ways</span></div></header>
+      <main class="main plain">
+
+        <div class="annot"><b>One agent, no project</b>A DM. Its mark is the agent’s mark. Second line is what came of it.</div>
+        <div class="list"><button class="row">
+          <span class="marks"><svg class="mk c-teal"><use href="#m-circle"></use></svg></span>
+          <span class="row-main"><span class="row-top"><b>How do other harnesses do memory?</b><time>4h</time></span>
+          <span class="row-sub"><span class="text">Three camps: files, a vector store, consolidation on a schedule</span></span></span>
+        </button></div>
+
+        <div class="annot"><b>Two agents</b>The mark is composed. The second line names who spoke last, because now it matters.</div>
+        <div class="list"><button class="row">
+          <span class="marks two"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg></span>
+          <span class="row-main"><span class="row-top"><b>Review: thread archive + search</b><time>22m</time></span>
+          <span class="row-sub"><span class="text">polyphemus · Reviewer: two findings, the rename no longer bumps recency</span></span></span>
+        </button></div>
+
+        <div class="annot"><b>Kept</b>A thread you come back to — a project’s standing conversation. The glyph is a pin, and it never greys out.</div>
+        <div class="list"><button class="row">
+          <span class="marks"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span>
+          <span class="row-main"><span class="row-top"><b>Planning the next milestone</b><span class="state"><svg viewBox="0 0 24 24"><path d="M12 3v10M8 7l4-4 4 4M5 20h14"></path></svg></span><time>1d</time></span>
+          <span class="row-sub"><span class="text">polyphemus · Home as the front door comes after threads you can manage</span></span></span>
+        </button></div>
+
+        <div class="annot"><b>Finished</b>A task that ended. Tick, lighter weight, dimmed mark. Still a thread; still openable; drops off Home after a week.</div>
+        <div class="list"><button class="row done">
+          <span class="marks"><svg class="mk c-green"><use href="#m-circle"></use></svg></span>
+          <span class="row-main"><span class="row-top"><b>Level 3 boss feels unfair</b><span class="state"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10"></path></svg></span><time>2d</time></span>
+          <span class="row-sub"><span class="text">Side Quest · Halved the projectile speed and added a tell</span></span></span>
+        </button></div>
+
+        <div class="annot"><b>Paused, needing you</b>The amber dot is the only thing that ever means “you”. The pause glyph says it stopped on its own.</div>
+        <div class="list"><button class="row">
+          <span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+          <span class="row-main"><span class="row-top"><b>Q3 outreach list</b><span class="state"><svg viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"></path></svg></span><time>2h</time></span>
+          <span class="row-sub"><span class="text">Game Night · Out of allowance mid-turn. Backup ready.</span><span class="dot needs"></span></span></span>
+        </button></div>
+
+        <div class="annot"><b>Started by something that isn’t me</b>A run or a routine firing. The word in the state slot says which. Opening it shows the run, and the run links to its threads.</div>
+        <div class="list"><button class="row">
+          <span class="marks three"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg><svg class="mk c-teal"><use href="#m-circle"></use></svg></span>
+          <span class="row-main"><span class="row-top"><b>Ticket 412 → merged PR</b><span class="state">run</span><time>5h</time></span>
+          <span class="row-sub"><span class="text">polyphemus · Step 3 of 5 · waiting for your OK to merge</span><span class="dot needs"></span></span></span>
+        </button></div>
+
+        <p class="hint">Three signals, and that is the whole vocabulary: the mark says who, the glyph says what state, the dot says whether it’s on you. Anything else goes on the second line in words.</p>
+      </main>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════ START SOMETHING ═══════════════════════ -->
+<section class="screen" data-screen="start" hidden>
+  <div>
+    <p class="caption"><b>Starting something.</b> Not a form. An empty thread with a composer, where the first thing you choose is who. Nothing is saved until you send, so backing out leaves nothing behind.</p>
+    <div class="stack-two">
+
+      <div class="phone">
+        <header class="bar">
+          <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+          <div class="bar-mid"><span class="screen-title">New thread</span></div>
+        </header>
+        <main class="main plain">
+          <p class="info">Type, or start with @ to bring in an agent.</p>
+        </main>
+        <div class="mention">
+          <div class="sec">Agents<span class="count">4</span></div>
+          <button class="row">
+            <span class="marks small"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Builder</b><span class="right">polyphemus</span></span><span class="row-sub"><span class="text">Takes a ticket from plan to merged PR</span></span></span>
+          </button>
+          <button class="row">
+            <span class="marks small"><svg class="mk c-violet"><use href="#m-diamond"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Reviewer</b><span class="right">everywhere</span></span><span class="row-sub"><span class="text">Reviews changes before they merge, and says no when it should</span></span></span>
+          </button>
+          <button class="row">
+            <span class="marks small"><svg class="mk c-teal"><use href="#m-circle"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Researcher</b><span class="right">everywhere</span></span><span class="row-sub"><span class="text">Finds out what the field has settled on, with sources</span></span></span>
+          </button>
+          <button class="row">
+            <span class="marks small"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>BD</b><span class="right">Game Night</span></span><span class="row-sub"><span class="text">Chases the pipeline and keeps the CRM honest</span></span></span>
+          </button>
+        </div>
+        <div class="draft"><span class="chip ghost">no agent yet</span></div>
+        <div class="composer">
+          <label><textarea rows="1">@</textarea></label>
+          <button class="round primary" aria-label="Send"><svg viewBox="0 0 24 24" class="ico"><path d="m5 12 14-7-5 7 5 7z"></path></svg></button>
+        </div>
+      </div>
+
+      <div class="phone">
+        <header class="bar">
+          <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+          <div class="bar-mid"><span class="screen-title">New thread</span></div>
+        </header>
+        <main class="main plain">
+          <p class="info">Builder works in polyphemus, so this thread will sit there. Change it on the chip.</p>
+        </main>
+        <div class="draft">
+          <span class="chip"><svg class="mk c-blue" width="18" height="18"><use href="#m-hex"></use></svg>Builder</span>
+          <span class="chip">polyphemus</span>
+          <span class="chip">Asks first</span>
+          <button class="chip ghost">more</button>
+        </div>
+        <div class="composer">
+          <label><textarea rows="2">@Builder the login test is flaky again — have a look before I cut the release</textarea></label>
+          <button class="round primary" aria-label="Send"><svg viewBox="0 0 24 24" class="ico"><path d="m5 12 14-7-5 7 5 7z"></path></svg></button>
+        </div>
+      </div>
+
+    </div>
+    <p class="caption">Model isn’t on the draft line. Builder brings its own, and if it can’t run, the first thing you hear about it is a card on Home offering the backup. “more” opens model, mode, and a second agent for the people who want them.</p>
+  </div>
+</section>
+
+<!-- ═════════════════════ MULTI-AGENT THREAD + GUARD ═════════════════ -->
+<section class="screen" data-screen="thread" hidden>
+  <div>
+    <p class="caption"><b>Three agents, one thread.</b> The header holds who and what, not settings. Agent-to-agent talk is inset and always visible. The guard stops the loop and asks in the timeline, where it happened.</p>
+    <div class="phone">
+      <header class="bar">
+        <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+        <div class="bar-mid">
+          <button class="pill">
+            <span class="marks three tiny"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg><svg class="mk c-teal"><use href="#m-circle"></use></svg></span>
+            <span>Ticket 412</span>
+          </button>
+        </div>
+        <div class="bar-side"><button class="round" aria-label="Thread settings"><svg viewBox="0 0 24 24" class="ico"><circle cx="5" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="19" cy="12" r="1.4"></circle></svg></button></div>
+      </header>
+
+      <div class="thread-state">
+        <span>3 agents · Builder leads</span><span class="bullet"></span>
+        <span>polyphemus</span><span class="bullet"></span>
+        <span class="warnish">YOLO — no approvals</span>
+      </div>
+
+      <main class="main with-composer">
+        <div class="day">Today</div>
+
+        <div class="msg you">Take ticket 412. Reviewer should look before anything merges.</div>
+
+        <div class="speaker"><svg class="mk c-blue" width="18" height="18"><use href="#m-hex"></use></svg><b>Builder</b><span class="lead">lead</span></div>
+        <div class="msg bot">Plan: reproduce the flake, fix the race in the session store, then hand to Reviewer. I’ll ask Researcher how other harnesses handle the token refresh.</div>
+
+        <details class="activity">
+          <summary><span class="dot working"></span><span class="sum-text"><span class="what">Read 6 files, ran the test 3 times</span><span class="tokens">1m 40s · 21k tokens · claude-opus-5</span></span></summary>
+          <div class="activity-body">
+            <p class="tool"><b>read</b> packages/core/src/session/store.ts</p>
+            <p class="tool"><b>bash</b> pnpm test packages/core/test/login.test.ts</p>
+            <p class="tool"><b>edit</b> packages/core/src/session/store.ts · +14 −6</p>
+          </div>
+        </details>
+
+        <div class="aside-msg">
+          <div class="who"><svg class="mk c-blue" width="16" height="16"><use href="#m-hex"></use></svg><b>Builder</b> asked <svg class="mk c-teal" width="16" height="16"><use href="#m-circle"></use></svg><b>Researcher</b></div>
+          <div class="what">Does anyone refresh the token on read rather than on a timer?</div>
+        </div>
+
+        <div class="aside-msg">
+          <div class="who"><svg class="mk c-teal" width="16" height="16"><use href="#m-circle"></use></svg><b>Researcher</b> answered <svg class="mk c-blue" width="16" height="16"><use href="#m-hex"></use></svg><b>Builder</b></div>
+          <div class="what">Two of three do, and both keep a mutex around it. Sources in my notes.</div>
+        </div>
+
+        <div class="ask">
+          <button class="ask-head"><svg viewBox="0 0 24 24" class="ico"><path d="M12 4.5 3.5 19h17z"></path><path d="M12 10v4M12 16.6v.2"></path></svg><b>Paused — 6 messages between agents</b></button>
+          <p>Builder and Researcher have gone back and forth six times without anything for you</p>
+          <p class="cost">About 34k tokens so far on claude-opus-5 and gpt-5.6-luna. Continuing allows six more.</p>
+          <div class="buttons"><button class="btn primary">Continue</button><button class="btn">Continue and stop asking here</button><button class="btn danger">Stop</button></div>
+        </div>
+
+        <div class="speaker"><svg class="mk c-violet" width="18" height="18"><use href="#m-diamond"></use></svg><b>Reviewer</b></div>
+        <div class="msg bot">Waiting on the fix. I’ll take it when Builder hands over.</div>
+
+        <p class="info">Spun out of <b>Ticket 412 → merged PR</b> · step 2 of 5</p>
+      </main>
+
+      <div class="composer">
+        <label><textarea rows="1" placeholder="Message, or @ someone in particular"></textarea></label>
+        <button class="round primary" aria-label="Send"><svg viewBox="0 0 24 24" class="ico"><path d="m5 12 14-7-5 7 5 7z"></path></svg></button>
+      </div>
+    </div>
+    <p class="caption">The five chips are gone. Who’s in it and who leads is the pill; everything else lives in ⋯ → thread settings, except a mode that can act without asking, which stays on screen in words.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ PROJECT ══════════════════════════════ -->
+<section class="screen" data-screen="project" hidden>
+  <div>
+    <p class="caption"><b>A project.</b> Same shape as Models &amp; providers: a few sections, each row carrying its own state and its own fix. The thread list here is Home with a filter, not a second list.</p>
+    <div class="phone">
+      <header class="bar">
+        <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+        <div class="bar-mid"><span class="screen-title">polyphemus</span></div>
+        <div class="bar-side"><button class="round primary" aria-label="New thread here"><svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"></path></svg></button></div>
+      </header>
+      <main class="main">
+
+        <div class="sec">Waiting on you<span class="count">2</span></div>
+        <div class="card">
+          <button class="item warn"><svg class="mk c-blue" width="24" height="24"><use href="#m-hex"></use></svg><span class="grow"><span>Approval in Flaky login test</span><small>bash · pnpm test --update</small></span><span class="value">3m</span></button>
+          <button class="item warn"><svg viewBox="0 0 24 24" class="ico"><path d="M6 4h9l3 3v13H6z"></path><path d="M9 12h6M9 16h4"></path></svg><span class="grow"><span>Review inbox</span><small>Steward proposed 2 edits to rules and notes</small></span><span class="value">2 waiting</span></button>
+        </div>
+
+        <div class="sec">Threads<span class="count">4</span><button class="linky">All</button></div>
+        <div class="list">
+          <button class="row">
+            <span class="marks"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Models &amp; providers from the mockup</b><time>now</time></span><span class="row-sub"><span class="text">Wiring the Connections tab to /api/providers…</span><span class="dot working"></span></span></span>
+          </button>
+          <button class="row">
+            <span class="marks"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Planning the next milestone</b><span class="state"><svg viewBox="0 0 24 24"><path d="M12 3v10M8 7l4-4 4 4M5 20h14"></path></svg></span><time>1d</time></span><span class="row-sub"><span class="text">Home as the front door comes after threads you can manage</span></span></span>
+          </button>
+          <button class="row">
+            <span class="marks two"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Review: thread archive + search</b><time>22m</time></span><span class="row-sub"><span class="text">Reviewer: two findings, the rename no longer bumps recency</span></span></span>
+          </button>
+        </div>
+
+        <div class="sec">Runs and routines<span class="count">2</span></div>
+        <div class="card">
+          <button class="item warn"><svg viewBox="0 0 24 24" class="ico"><circle cx="6" cy="12" r="2.4"></circle><circle cx="18" cy="6" r="2.4"></circle><circle cx="18" cy="18" r="2.4"></circle><path d="M8.4 11 15.6 7M8.4 13l7.2 4"></path></svg><span class="grow"><span>Ticket 412 → merged PR</span><small>step 3 of 5 · waiting for your OK to merge</small></span><span class="value">5h</span></button>
+          <div class="item"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4.5l3 1.8"></path></svg><span class="grow"><span>Nightly review</span><small>every day at 2:00 AM · next tonight · last run clean, 16h ago</small></span><button class="btn small">Run now</button></div>
+        </div>
+
+        <div class="sec">Who works here<span class="count">3</span></div>
+        <div class="card">
+          <button class="item"><svg class="mk c-blue" width="26" height="26"><use href="#m-hex"></use></svg><span class="grow"><span>Builder</span><small>claude-opus-5 · falls back to gpt-5.6-luna</small></span><span class="chev">›</span></button>
+          <button class="item"><svg class="mk c-violet" width="26" height="26"><use href="#m-diamond"></use></svg><span class="grow"><span>Reviewer</span><small>claude-opus-5 · no backup — it stops</small></span><span class="chev">›</span></button>
+          <button class="item"><svg class="mk c-teal" width="26" height="26"><use href="#m-circle"></use></svg><span class="grow"><span>Researcher</span><small>gpt-5.6-luna · falls back to claude-opus-5</small></span><span class="chev">›</span></button>
+        </div>
+
+        <div class="sec">What agents read here</div>
+        <div class="card">
+          <button class="item"><span class="grow"><span>Rules</span><small>AGENTS.md · every agent here reads it first · edited 3d ago</small></span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Notes</span><small>14 notes · last added by Builder, 2h ago</small></span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Handoff</span><small>What the next agent should know · 1 paragraph</small></span><span class="chev">›</span></button>
+          <div class="item"><span class="grow"><span>Folder</span><small class="path">/home/alex/projects/polyphemus</small></span></div>
+        </div>
+
+        <p class="hint">Active project. Parking it stops routines and keeps everything else.</p>
+      </main>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════ AGENT ═══════════════════════════════ -->
+<section class="screen" data-screen="agent" hidden>
+  <div>
+    <p class="caption"><b>An agent.</b> A reading view, not a form. Every line is a fact with a value; tapping one opens a sheet for that one thing. This is the shape that survives skills, routines, permissions and plugin grants arriving later.</p>
+    <div class="phone">
+      <header class="bar">
+        <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+        <div class="bar-mid"><button class="pill"><svg class="mk c-blue" width="26" height="26"><use href="#m-hex"></use></svg><span>Builder</span></button></div>
+        <div class="bar-side"><button class="round" aria-label="More"><svg viewBox="0 0 24 24" class="ico"><circle cx="5" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="19" cy="12" r="1.4"></circle></svg></button></div>
+      </header>
+      <main class="main plain">
+
+        <p class="hint">Takes a ticket from plan to merged PR. Works in polyphemus.</p>
+        <button class="btn primary wide">Message Builder</button>
+
+        <div class="sec">Lately<span class="count">3</span></div>
+        <div class="list">
+          <button class="row">
+            <span class="marks"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Flaky login test</b><time>3m</time></span><span class="row-sub"><span class="text">polyphemus · waiting for your OK to run bash</span><span class="dot needs"></span></span></span>
+          </button>
+          <button class="row">
+            <span class="marks two"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg></span>
+            <span class="row-main"><span class="row-top"><b>Review: thread archive + search</b><time>22m</time></span><span class="row-sub"><span class="text">polyphemus · with Reviewer</span></span></span>
+          </button>
+        </div>
+        <button class="linky">Every thread with Builder</button>
+
+        <div class="sec">How it runs</div>
+        <div class="card">
+          <button class="item"><span class="grow"><span>Model</span><small>Anthropic · Claude Code CLI · your subscription</small></span><span class="value">claude-opus-5</span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>If that can’t run</span><small>gpt-5.6-luna, then ask you. Never per-token billing.</small></span><span class="value">1 backup</span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Approvals</span><small>Asks before bash and before writing outside the project</small></span><span class="value">Asks first</span><span class="chev">›</span></button>
+        </div>
+
+        <div class="sec">What it can do</div>
+        <div class="card">
+          <button class="item"><span class="grow"><span>Skills</span><small>code-review, changelog, release-notes</small></span><span class="value">3</span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Plugins</span><small>GitHub (read + write PRs), Linear (read)</small></span><span class="value">2 granted</span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Routines</span><small>Nightly review · every day at 2:00 AM</small></span><span class="value">1</span><span class="chev">›</span></button>
+        </div>
+
+        <div class="sec">Who it is</div>
+        <div class="card">
+          <button class="item"><span class="grow"><span>Name and mark</span><small>Called Builder · blue hexagon · known to your computer as builder</small></span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Instructions</span><small>“Plan first. Small commits. Never merge your own work.” · 240 words</small></span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Where it works</span><small>polyphemus only</small></span><span class="value">1 project</span><span class="chev">›</span></button>
+        </div>
+
+        <p class="hint">Deleting Builder keeps its threads and marks them as having no agent. Its routines stop.</p>
+      </main>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════════ RUN ════════════════════════════════ -->
+<section class="screen" data-screen="run" hidden>
+  <div>
+    <p class="caption"><b>A run.</b> Reached by opening its row on Home — not a tab. Each step is a thread you can open and read, and the gate is the same approval card you see everywhere else.</p>
+    <div class="phone">
+      <header class="bar">
+        <button class="round" aria-label="Back"><svg viewBox="0 0 24 24" class="ico"><path d="M15 5l-7 7 7 7"></path></svg></button>
+        <div class="bar-mid"><span class="screen-title">Ticket 412 → merged PR</span></div>
+      </header>
+      <main class="main">
+        <div class="thread-state"><span>polyphemus</span><span class="bullet"></span><span>started 5h ago by Builder</span><span class="bullet"></span><span>step 3 of 5</span></div>
+
+        <div class="ask">
+          <button class="ask-head"><svg class="mk c-violet" width="24" height="24"><use href="#m-diamond"></use></svg><b>Gate — Reviewer approved</b></button>
+          <p>Waiting for your OK to merge PR #218</p>
+          <p class="cost">14 files, +320 −96. Reviewer found nothing blocking. Merging runs the release routine afterwards.</p>
+          <div class="buttons"><button class="btn primary">Merge</button><button class="btn">Read the diff</button><button class="btn danger">Send back</button></div>
+        </div>
+
+        <div class="sec">Steps</div>
+        <div class="steps">
+          <div class="step done"><span class="step-n">✓</span><div class="step-body"><b>Plan</b><small>Builder · 4m · 18k tokens</small><button class="step-link"><svg viewBox="0 0 24 24" class="ico mini"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>Open the thread</button></div></div>
+          <div class="step done"><span class="step-n">✓</span><div class="step-body"><b>Build</b><small>Builder · 38m · 214k tokens · 14 files changed</small><button class="step-link"><svg viewBox="0 0 24 24" class="ico mini"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>Open the thread</button></div></div>
+          <div class="step gate"><span class="step-n">3</span><div class="step-body"><b>Merge</b><small>Needs your OK · waiting 12m</small><button class="step-link"><svg viewBox="0 0 24 24" class="ico mini"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>Open the review thread</button></div></div>
+          <div class="step todo"><span class="step-n">4</span><div class="step-body"><b>Release notes</b><small>Builder · hasn’t started</small></div></div>
+          <div class="step todo"><span class="step-n">5</span><div class="step-body"><b>Close the ticket</b><small>Builder · hasn’t started</small></div></div>
+        </div>
+
+        <div class="sec">What it cost</div>
+        <div class="card">
+          <div class="item"><span class="grow"><span>So far</span><small>claude-opus-5 on your subscription · 232k tokens</small></span><span class="value">4% of the week</span></div>
+          <div class="item"><span class="grow"><span>Nothing billed per token</span><small>No API connection was used in this run</small></span></div>
+        </div>
+      </main>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════════════════════ YOU ════════════════════════════════ -->
+<section class="screen" data-screen="you" hidden>
+  <div>
+    <p class="caption"><b>You.</b> Unchanged in spirit — usage, models, devices — but usage now names the connection that owns the allowance and who is spending it, and the stale window is drawn as unknown, not as zero.</p>
+    <div class="phone">
+      <header class="bar"><div class="bar-mid"><span class="screen-title">You</span></div></header>
+      <main class="main">
+        <div class="sec">Allowances</div>
+        <div class="card">
+          <div class="item"><span class="grow"><span>Claude subscription</span><small>Claude Code CLI · alex@example.com · Builder, Reviewer and 9 threads</small></span><span class="value">34% this week</span></div>
+          <div class="item"><span class="grow"><span>ChatGPT plan</span><small>Codex CLI · Researcher, BD</small></span><span class="value">0% · resets Sat</span></div>
+          <div class="item warn"><span class="grow"><span>Weekly window (Fable)</span><small>Claude Code CLI hasn’t reported this since you signed in</small></span><span class="value">Unknown</span></div>
+        </div>
+
+        <div class="sec">Setup</div>
+        <div class="card">
+          <button class="item"><span class="grow"><span>Models &amp; providers</span><small>5 models · 3 connections · 1 needs attention</small></span><span class="value">1</span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Notifications</span><small>On this device · only things waiting on you</small></span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>Devices</span><small>2 paired · this one last seen now</small></span><span class="chev">›</span></button>
+          <button class="item"><span class="grow"><span>How threads read</span><small>Summaries, with the work one tap away</small></span><span class="value">Compact</span><span class="chev">›</span></button>
+        </div>
+        <p class="hint">Projects and agents moved to Work. This is the machine: what it costs, what it can reach, and which devices can drive it.</p>
+      </main>
+      <nav class="tabs">
+        <button><svg viewBox="0 0 24 24" class="ico"><path d="M4 11.5 12 5l8 6.5V20H4z"></path></svg>Home</button>
+        <button><svg viewBox="0 0 24 24" class="ico"><path d="M4 7h5l2 2.5h9V19H4z"></path></svg>Work</button>
+        <button aria-current="page"><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="8" r="3.4"></circle><path d="M4.5 20c0-4 3.4-6 7.5-6s7.5 2 7.5 6"></path></svg>You</button>
+      </nav>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════ DESKTOP ══════════════════════════════ -->
+<section class="screen" data-screen="desktop" hidden>
+  <div>
+    <p class="caption wide-caption"><b>Desktop.</b> The rail and the list are the phone’s Home, kept. The content pane is the thread. The fourth pane appears only when the content has something to compare against — here, the run this thread belongs to — and it closes.</p>
+    <div class="deskframe">
+      <div class="desk">
+        <div class="rail-inner">
+          <button class="rail-brand"><svg viewBox="0 0 48 48" width="30" height="30" aria-hidden="true"><rect width="48" height="48" rx="13" fill="var(--ink)"></rect><path d="M15.5 12v24M15.5 25c0-5.2 3.8-8.3 8.8-8.3s8.8 3.1 8.8 8.3v11" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"></path></svg></button>
+          <button aria-current="page"><svg viewBox="0 0 24 24" class="ico"><path d="M4 11.5 12 5l8 6.5V20H4z"></path></svg>Home<span class="badge">3</span></button>
+          <button><svg viewBox="0 0 24 24" class="ico"><path d="M4 7h5l2 2.5h9V19H4z"></path></svg>Work</button>
+          <button><svg viewBox="0 0 24 24" class="ico"><circle cx="12" cy="8" r="3.4"></circle><path d="M4.5 20c0-4 3.4-6 7.5-6s7.5 2 7.5 6"></path></svg>You</button>
+        </div>
+
+        <div id="sidebar">
+          <header class="bar">
+            <div class="bar-mid"><span class="screen-title">Home</span></div>
+            <div class="bar-side"><button class="round" aria-label="Search"><svg viewBox="0 0 24 24" class="ico"><circle cx="10.5" cy="10.5" r="6"></circle><path d="m15 15 5 5"></path></svg></button><button class="round primary" aria-label="Start something"><svg viewBox="0 0 24 24" class="ico"><path d="M12 5v14M5 12h14"></path></svg></button></div>
+          </header>
+          <main class="main plain">
+            <div class="sec">Waiting on you<span class="count">3</span></div>
+            <div class="list">
+              <button class="row"><span class="marks"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span><span class="row-main"><span class="row-top"><b>Flaky login test</b><time>3m</time></span><span class="row-sub"><span class="text">polyphemus · OK to run bash?</span><span class="dot needs"></span></span></span></button>
+              <button class="row"><span class="marks"><svg class="mk c-amber"><use href="#m-cloud"></use></svg></span><span class="row-main"><span class="row-top"><b>Q3 outreach list</b><time>2h</time></span><span class="row-sub"><span class="text">Game Night · out of allowance</span><span class="dot needs"></span></span></span></button>
+              <button class="row" aria-current="true"><span class="marks three"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg><svg class="mk c-teal"><use href="#m-circle"></use></svg></span><span class="row-main"><span class="row-top"><b>Ticket 412</b><span class="state">run</span><time>5h</time></span><span class="row-sub"><span class="text">polyphemus · OK to merge?</span><span class="dot needs"></span></span></span></button>
+            </div>
+            <div class="sec">Working now<span class="count">1</span></div>
+            <div class="list">
+              <button class="row"><span class="marks"><svg class="mk c-blue"><use href="#m-hex"></use></svg></span><span class="row-main"><span class="row-top"><b>Models &amp; providers</b><time>now</time></span><span class="row-sub"><span class="text">polyphemus · wiring Connections…</span><span class="dot working"></span></span></span></button>
+            </div>
+            <div class="sec">Earlier</div>
+            <div class="list">
+              <button class="row"><span class="marks two"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg></span><span class="row-main"><span class="row-top"><b>Review: archive + search</b><time>22m</time></span><span class="row-sub"><span class="text">polyphemus · Reviewer: two findings</span></span></span></button>
+              <button class="row done"><span class="marks"><svg class="mk c-teal"><use href="#m-circle"></use></svg></span><span class="row-main"><span class="row-top"><b>How do harnesses do memory?</b><span class="state"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10"></path></svg></span><time>4h</time></span><span class="row-sub"><span class="text">Three camps</span></span></span></button>
+              <button class="row done"><span class="marks"><svg class="mk c-green"><use href="#m-circle"></use></svg></span><span class="row-main"><span class="row-top"><b>Level 3 boss feels unfair</b><span class="state"><svg viewBox="0 0 24 24"><path d="m5 13 4 4 10-10"></path></svg></span><time>2d</time></span><span class="row-sub"><span class="text">Side Quest · projectile speed halved</span></span></span></button>
+            </div>
+          </main>
+        </div>
+
+        <div class="desk-cols">
+          <div>
+            <header class="bar">
+              <div class="bar-mid"><button class="pill"><span class="marks three tiny"><svg class="mk c-blue"><use href="#m-hex"></use></svg><svg class="mk c-violet"><use href="#m-diamond"></use></svg><svg class="mk c-teal"><use href="#m-circle"></use></svg></span><span>Ticket 412</span></button></div>
+              <div class="bar-side"><button class="round" aria-label="Thread settings"><svg viewBox="0 0 24 24" class="ico"><circle cx="5" cy="12" r="1.4"></circle><circle cx="12" cy="12" r="1.4"></circle><circle cx="19" cy="12" r="1.4"></circle></svg></button></div>
+            </header>
+            <div class="thread-state"><span>3 agents · Builder leads</span><span class="bullet"></span><span>polyphemus</span><span class="bullet"></span><span class="warnish">YOLO — no approvals</span></div>
+            <main class="main plain">
+              <div class="msg you">Take ticket 412. Reviewer should look before anything merges.</div>
+              <div class="speaker"><svg class="mk c-blue" width="18" height="18"><use href="#m-hex"></use></svg><b>Builder</b><span class="lead">lead</span></div>
+              <div class="msg bot">Plan: reproduce the flake, fix the race in the session store, then hand to Reviewer.</div>
+              <div class="aside-msg"><div class="who"><svg class="mk c-blue" width="16" height="16"><use href="#m-hex"></use></svg><b>Builder</b> asked <svg class="mk c-teal" width="16" height="16"><use href="#m-circle"></use></svg><b>Researcher</b></div><div class="what">Does anyone refresh the token on read rather than on a timer?</div></div>
+              <div class="ask">
+                <button class="ask-head"><b>Waiting for your OK to merge PR #218</b></button>
+                <p class="cost">14 files, +320 −96. Reviewer found nothing blocking.</p>
+                <div class="buttons"><button class="btn primary">Merge</button><button class="btn">Read the diff</button><button class="btn danger">Send back</button></div>
+              </div>
+            </main>
+          </div>
+
+          <aside class="detail">
+            <header class="bar"><div class="bar-mid"><span class="screen-title">Its run</span></div><div class="bar-side"><button class="round" aria-label="Close"><svg viewBox="0 0 24 24" class="ico"><path d="M6 6l12 12M18 6 6 18"></path></svg></button></div></header>
+            <main class="main plain">
+              <div class="steps">
+                <div class="step done"><span class="step-n">✓</span><div class="step-body"><b>Plan</b><small>4m</small></div></div>
+                <div class="step done"><span class="step-n">✓</span><div class="step-body"><b>Build</b><small>38m · 14 files</small></div></div>
+                <div class="step gate"><span class="step-n">3</span><div class="step-body"><b>Merge</b><small>needs your OK</small></div></div>
+                <div class="step todo"><span class="step-n">4</span><div class="step-body"><b>Release notes</b></div></div>
+                <div class="step todo"><span class="step-n">5</span><div class="step-body"><b>Close ticket</b></div></div>
+              </div>
+              <div class="sec">Cost so far</div>
+              <div class="card"><div class="item"><span class="grow"><span>232k tokens</span><small>claude-opus-5 · subscription</small></span><span class="value">4% of week</span></div></div>
+            </main>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+  var btns = document.querySelectorAll('.preview [data-go]');
+  function show(name){
+    document.querySelectorAll('.screen').forEach(function(s){ s.hidden = s.dataset.screen !== name; });
+    btns.forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.go === name)); });
+    window.scrollTo({ top: 0 });
+  }
+  btns.forEach(function(b){ b.addEventListener('click', function(){ show(b.dataset.go); }); });
+  var t = document.getElementById('theme');
+  t.addEventListener('click', function(){
+    var dark = document.documentElement.classList.toggle('dark');
+    document.documentElement.classList.toggle('light', !dark);
+    t.textContent = dark ? 'Light' : 'Dark';
+  });
+</script>
+</body>
+</html>

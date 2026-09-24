@@ -1,0 +1,7 @@
+# Test fixtures use obviously fake tokens on purpose (to prove polyphemus redacts and refuses them).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake credentials in tests"
+paths = ['''packages/.*/test/.*''', '''docs/design/ui/.*\.html''']

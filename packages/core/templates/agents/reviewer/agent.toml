@@ -1,0 +1,8 @@
+# What this agent is, and what it runs on. Safe to commit: no secrets go here.
+name = "reviewer"
+title = "Reviewer"
+description = "reviewing a change before it ships: what breaks, what's missing, what's risky"
+
+# model = "claude"          # its own model; leave it out to use the session's
+# fallback = ["codex"]      # what to try when that one can't take a turn
+# skills = ["review-pr"]    # only these skills; leave it out for every skill in scope

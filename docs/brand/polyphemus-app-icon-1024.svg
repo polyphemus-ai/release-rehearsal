@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Polyphemus">
+  <rect width="1024" height="1024" rx="228" fill="#1A1A18"/>
+  <g transform="translate(128,224) scale(8.0)" fill="none" stroke="#FF4B1F" stroke-width="13" stroke-linecap="round">
+    <circle cx="48" cy="36" r="24.5"/>
+    <path d="M6.5,36 H17.5"/>
+    <path d="M78.5,36 H89.5"/>
+  </g>
+  <circle cx="512.0" cy="512.0" r="72.0" fill="#FF4B1F"/>
+</svg>
