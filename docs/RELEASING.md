@@ -21,7 +21,9 @@ one version, and are bundled into the published `polyphemus` by `scripts/build.m
 2. Merge to `main`. CI runs on Linux and macOS: typecheck, tests, the app smoke check, and
    `scripts/pack-check.mjs`, which installs the package as published into an empty folder and runs it.
 3. The Release workflow keeps a **Version packages** pull request open with the next version and its
-   changelog.
+   changelog. CI on that pull request waits for someone to approve the run (the pull request's
+   Checks, "Approve workflows to run"): GitHub holds runs on pull requests the Actions bot opens.
+   Approve it, and merge once it's green.
 
 ## Releasing
 
@@ -44,10 +46,11 @@ Merge the **Version packages** pull request. The Release workflow then:
   from the beta channel. `poly update` updates an install made this way in place. CI runs the script
   against the packed package on Linux and macOS.
 - **Every release carries it.** The Release workflow makes a GitHub release for each version with
-  `install.sh` attached, and its part of the changelog as the notes. Betas are pre-releases, so
+  `install.sh` and `install.ps1` attached, and its part of the changelog as the notes. Betas are pre-releases, so
   `releases/latest/download/install.sh` is always the newest stable release's script. polyphemus.ai
   serves `/install.sh` by redirecting there.
-- **Windows** isn't covered: until native Windows (roadmap), the script runs inside WSL2.
+- **Windows** is `install/install.ps1`: it finds, installs or updates WSL2 and Ubuntu, turns on
+  systemd (asking first each time), then runs `install.sh` inside WSL. Native Windows is on the roadmap.
 
 ## Before the first release
 

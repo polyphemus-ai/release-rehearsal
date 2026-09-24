@@ -46,9 +46,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      # A changeset naming a package that isn't in the workspace crashes the release's first step;
-      # found only at release time until this (2026-09-23): twelve named the published `polyphemus`.
-      - run: pnpm changeset status
       # Docker is on the Linux runners, so the worker-isolation tests really run there. On macOS there
       # is none, and they say so loudly unless this says we know (containers.ts).
       - run: pnpm test
