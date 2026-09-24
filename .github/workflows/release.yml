@@ -34,16 +34,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck && pnpm test
       - id: changesets
-        uses: changesets/action@v1
+        # v2, for Changesets 3: v1 read a beta's .changeset/pre folder as an old-style changeset and
+        # stopped the first beta (release rehearsal, 2026-09-23). The Publish step below tags and
+        # makes the GitHub release, so the action doesn't.
+        uses: changesets/action@v2
         with:
-          version: pnpm changeset version
-          title: Version packages
-          commit: Version packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          version-script: pnpm changeset version
+          pr-title: Version packages
+          commit-message: Version packages
+          create-github-releases: false
+          push-git-tags: false
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       # Nothing waiting and this version isn't on npm yet: publish it.
       - name: Publish
-        if: steps.changesets.outputs.hasChangesets == 'false'
+        if: steps.changesets.outputs.has-changesets == 'false'
         run: |
           VERSION=$(node -p "require('./packages/cli/package.json').version")
           if npm view "polyphemus-rehearsal@$VERSION" version >/dev/null 2>&1; then
