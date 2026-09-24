@@ -100,6 +100,9 @@ export function fakeGitHub(root: string) {
           GIT_CONFIG_NOSYSTEM: '1',
         },
       });
+      // git can answer and exit before reading the whole request (a fetch that has what it needs); the
+      // write then fails with EPIPE, which is fine here, and uncaught failed the whole run (macOS CI).
+      cgi.stdin.on('error', () => {});
       cgi.stdin.end(raw);
       const out: Buffer[] = [];
       cgi.stdout.on('data', (c: Buffer) => out.push(c));
