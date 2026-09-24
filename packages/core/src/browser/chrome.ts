@@ -185,7 +185,9 @@ async function startBrowser(opts: { chrome?: string; worker?: Worker }, headful:
   void gone.then(() => pipe.failAll(new Error(`Chrome stopped${stderr.trim() ? `: ${stderr.trim().split('\n').at(-1)}` : ''}`)));
   child.once('error', (err) => pipe.failAll(err));
   try {
-    await within(pipe.send('Browser.getVersion'), 20_000, 'Starting Chrome');
+    // A first start in a fresh profile on a busy two-core computer took over 20s (CI, 2026-09-23); a
+    // longer wait costs nothing when Chrome is quick, and only delays the failure when it isn't.
+    await within(pipe.send('Browser.getVersion'), 60_000, 'Starting Chrome');
   } catch (err) {
     child.kill('SIGKILL');
     removeProfile();
