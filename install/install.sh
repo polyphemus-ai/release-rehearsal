@@ -82,7 +82,7 @@ if [ -z "$NODE" ]; then
   WANT="$(printf '%s\n' "$SUMS" | awk -v f="$FILE" '$2 == f { print $1 }')"
   TMP="$(mktemp -d)"
   trap 'rm -rf "$TMP"' EXIT
-  say "Downloading $FILE…"
+  say "Downloading ${FILE}…"
   curl -fsSL "$BASE/$FILE" -o "$TMP/$FILE" || fail "couldn't download Node.js."
   if command -v sha256sum >/dev/null 2>&1; then GOT="$(sha256sum "$TMP/$FILE" | awk '{ print $1 }')"; else GOT="$(shasum -a 256 "$TMP/$FILE" | awk '{ print $1 }')"; fi
   [ "$GOT" = "$WANT" ] || fail "the Node.js download didn't match its checksum. Nothing was installed."
@@ -102,7 +102,7 @@ NPM="$NODE_BIN/npm"
 [ -n "$NPM" ] || fail "found Node.js but not npm beside it."
 
 if [ -n "${POLYPHEMUS_PACKAGE:-}" ]; then WHAT="$POLYPHEMUS_PACKAGE"; else WHAT="polyphemus-rehearsal@${POLYPHEMUS_VERSION:-$TAG}"; fi
-say "Installing $WHAT…"
+say "Installing ${WHAT}…"
 mkdir -p "$PREFIX" "$BIN_DIR"
 PATH="$NODE_BIN:$PATH" "$NPM" install --global --prefix "$PREFIX" --no-fund --no-audit --no-update-notifier --loglevel=error "$WHAT" || fail "npm couldn't install $WHAT."
 
