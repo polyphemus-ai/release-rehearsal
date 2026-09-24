@@ -63,7 +63,7 @@ const pkg = {
   bugs: 'https://github.com/polyphemus-ai/release-rehearsal/issues',
   type: 'module',
   // What you type is `poly`; the full name works too, and so do the names it had before.
-  bin: { poly: './bin/polyphemus.mjs', polyphemus: './bin/polyphemus.mjs' },
+  bin: { poly: 'bin/polyphemus.mjs', polyphemus: 'bin/polyphemus.mjs' },
   engines: rootPkg.engines,
   files: ['bin', 'lib', 'core', 'daemon', 'README.md', 'LICENSE', 'NOTICE'],
   dependencies,

@@ -66,5 +66,9 @@ Merge the **Version packages** pull request. The Release workflow then:
   (the organization's Settings → Actions → General → Workflow permissions). With the organization's
   switch off, the repository's can't be turned on, and the Release workflow fails at "GitHub Actions
   is not permitted to create or approve pull requests" — found by the release rehearsal.
+- The repository's About: `gh repo edit polyphemus-ai/polyphemus --description "One agent harness for
+  Claude, OpenAI and Grok — their APIs or your own subscriptions — running on your computer, reachable
+  from your phone. 👁️" --homepage https://polyphemus.ai --add-topic
+  ai,ai-agents,agent-harness,llm,claude,openai,grok,mcp,self-hosted,multi-agent,typescript`.
 - The whole process is rehearsed in public on a stand-in package first, with the same workflow as
   this repository's, kept apart from Polyphemus so nothing links the two.

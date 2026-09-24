@@ -2,7 +2,7 @@
 // Installs the package exactly as npm would publish it into an empty folder, and checks it works
 // there: the command runs, the daemon starts and serves the app with its security headers, polyphemus's
 // own servers start, and the package holds only what it should. Run before any release.
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -18,6 +18,13 @@ const tarball = readdirSync(join(root, 'dist')).filter((f) => /^polyphemus-.*\.t
 const listing = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' }).split('\n').filter(Boolean);
 const unexpected = listing.filter((f) => !/^package\/(package\.json|README\.md|LICENSE|NOTICE|bin\/|lib\/|core\/(bin|templates)\/|daemon\/(web\/|security-headers\.json))/.test(f));
 if (unexpected.length) fail(`the package holds files it shouldn't:\n  ${unexpected.join('\n  ')}`);
+// Installing a tarball forgives what publishing "corrects": npm 11 dropped both commands for a bin
+// path written ./bin/…, so the package would have installed with no `poly` (release rehearsal,
+// 2026-09-23). A dry run says what it would change; its exit code isn't the point (it refuses a
+// version that's already out, or with no one signed in), its warnings are.
+const dry = spawnSync('npm', ['publish', '--dry-run', join(root, 'dist', 'polyphemus')], { encoding: 'utf8' });
+const corrected = `${dry.stdout}${dry.stderr}`.split('\n').filter((l) => /auto-corrected|was invalid and removed|errors corrected/.test(l));
+if (corrected.length) fail(`npm would change the package when publishing it:\n  ${corrected.join('\n  ')}`);
 
 const dir = mkdtempSync(join(tmpdir(), 'polyphemus-pack-'));
 const home = join(dir, 'home');
