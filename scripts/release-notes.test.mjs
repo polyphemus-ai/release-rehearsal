@@ -49,7 +49,26 @@ const daemon = `# @polyphemus/daemon
 - 3d4e5f6: One change named against two packages.
 `;
 
+// A first release, as changesets writes it: the version bumps are entries of their own.
+const first = `# @polyphemus/cli
+
+## 0.1.0
+
+### Minor Changes
+
+- d3066c2: The first release.
+
+### Patch Changes
+
+- @polyphemus/core@0.1.0
+  - @polyphemus/daemon@0.1.0
+`;
+
 describe('release notes', () => {
+  it('leave out a first release’s version bumps', () => {
+    expect(releaseNotes([first, '# @polyphemus/daemon\n\n## 0.1.0\n\n### Patch Changes\n\n- @polyphemus/core@0.1.0\n'], '0.1.0')).toBe('### Minor Changes\n\n- The first release.');
+  });
+
   it('gather every package’s changes for the version, each once, without the filler or the hashes', () => {
     expect(releaseNotes([cli, core, daemon], '0.2.0')).toBe(
       [

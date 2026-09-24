@@ -66,6 +66,8 @@ Merge the **Version packages** pull request. The Release workflow then:
   (the organization's Settings → Actions → General → Workflow permissions). With the organization's
   switch off, the repository's can't be turned on, and the Release workflow fails at "GitHub Actions
   is not permitted to create or approve pull requests" — found by the release rehearsal.
+- Commits in the public repository carry no `Co-Authored-By` lines naming an AI: GitHub lists every
+  co-author as a contributor. The export's fresh commit has none; keep it that way for what follows.
 - The repository's About: `gh repo edit polyphemus-ai/polyphemus --description "One agent harness for
   Claude, OpenAI and Grok — their APIs or your own subscriptions — running on your computer, reachable
   from your phone. 👁️" --homepage https://polyphemus.ai --add-topic

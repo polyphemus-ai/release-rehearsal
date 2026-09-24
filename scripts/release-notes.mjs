@@ -19,7 +19,8 @@ export function entries(changelog, version) {
   let kind;
   let current;
   const finish = () => {
-    if (current && kind && !/^Updated dependencies\b/.test(current)) found[kind]?.push(current.trim());
+    // A package's own version bump written as an entry ("- @polyphemus/core@0.1.0"), as a first release does, is filler too.
+    if (current && kind && !/^Updated dependencies\b/.test(current) && !/^(@polyphemus\/[\w-]+@\S+\s*)+$/.test(current)) found[kind]?.push(current.trim());
     current = undefined;
   };
   for (const line of changelog.split('\n')) {
