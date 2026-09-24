@@ -12,7 +12,7 @@ import { INTRODUCE_YOURSELF_OPENING } from '../roster.js';
 import { quotaRetryMs } from '../quota.js';
 import { isIsolationLevel, type IsolationLevel } from '../isolation/levels.js';
 import { parseNetwork, type ProjectNetwork } from '../isolation/network.js';
-import type { CapacityReading, Message, StopReason, Usage } from '../types.js';
+import { PolyphemusError, type CapacityReading, type Message, type StopReason, type Usage } from '../types.js';
 
 export interface SessionMeta {
   id: string;
@@ -52,6 +52,15 @@ export interface SessionMatch {
   /** A few words either side of the match in what was said, or undefined when only the title matched. */
   snippet?: string;
 }
+
+/**
+ * Which shape of data this version writes. Changes to the schema only ever add (a table, a column
+ * with a default), so an older polyphemus reads newer data and ignores what it doesn't know — which is
+ * what makes going back a version safe. A change an older version would misread (a column dropped,
+ * renamed or given a new meaning) raises this, and an older version then refuses to open the data
+ * rather than writing into what it can't understand (docs/design/upgrades.md).
+ */
+export const DATA_GENERATION = 1;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -772,6 +781,16 @@ export class SessionStore {
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
     this.db = new DatabaseSync(path);
     this.db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+    const generation = (this.db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version;
+    if (generation > DATA_GENERATION) {
+      this.db.close();
+      throw new PolyphemusError(
+        'A newer version of polyphemus changed this computer’s data in a way this version can’t read, so it stopped rather than risk it. Update polyphemus, or put back the data from before that update.',
+        'FAILED',
+        'poly update  ·  or: poly rollback --restore',
+      );
+    }
+    if (generation < DATA_GENERATION) this.db.exec(`PRAGMA user_version = ${DATA_GENERATION}`);
     this.db.exec(SCHEMA);
     this.connections = new ConnectionStore(this.db);
     this.runs = new RunStore(this.db);

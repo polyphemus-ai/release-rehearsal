@@ -102,11 +102,33 @@ NPM="$NODE_BIN/npm"
 [ -n "$NPM" ] || fail "found Node.js but not npm beside it."
 
 if [ -n "${POLYPHEMUS_PACKAGE:-}" ]; then WHAT="$POLYPHEMUS_PACKAGE"; else WHAT="polyphemus-rehearsal@${POLYPHEMUS_VERSION:-$TAG}"; fi
-say "Installing ${WHAT}…"
-mkdir -p "$PREFIX" "$BIN_DIR"
-PATH="$NODE_BIN:$PATH" "$NPM" install --global --prefix "$PREFIX" --no-fund --no-audit --no-update-notifier --loglevel=error "$WHAT" || fail "npm couldn't install $WHAT."
+mkdir -p "$PREFIX/versions" "$BIN_DIR"
 
-LAUNCHER="$PREFIX/lib/node_modules/polyphemus-rehearsal/bin/polyphemus.mjs"
+# Each version in a folder of its own, with `current` pointing at the one in use: `poly update`
+# installs the next beside it, checks it against a copy of your data, and switches — and can switch
+# back. Already installed, this leaves the package alone and says how to update (unless you asked
+# for a particular version or package), so running the installer again never swaps a running
+# Polyphemus without those checks.
+if [ -L "$PREFIX/current" ] && [ -z "${POLYPHEMUS_VERSION:-}" ] && [ -z "${POLYPHEMUS_PACKAGE:-}" ]; then
+  say "Polyphemus is already installed here ($(readlink "$PREFIX/current" | sed 's|.*/||')). To update it: poly update"
+else
+  say "Installing ${WHAT}…"
+  STAGE="$PREFIX/versions/.incoming-$$"
+  rm -rf "$STAGE"
+  PATH="$NODE_BIN:$PATH" "$NPM" install --global --prefix "$STAGE" --no-fund --no-audit --no-update-notifier --loglevel=error "$WHAT" || { rm -rf "$STAGE"; fail "npm couldn't install $WHAT."; }
+  NAME="$(ls "$STAGE/lib/node_modules" | head -n 1)"
+  VERSION="$("$NODE" -p "require(process.argv[1]).version" "$STAGE/lib/node_modules/$NAME/package.json")" || { rm -rf "$STAGE"; fail "the package installed, but its version couldn't be read."; }
+  if [ "$(readlink "$PREFIX/current" 2>/dev/null || true)" = "versions/$VERSION" ]; then
+    rm -rf "$STAGE"
+    say "Polyphemus $VERSION is already the one in use."
+  else
+    rm -rf "$PREFIX/versions/$VERSION"
+    mv "$STAGE" "$PREFIX/versions/$VERSION"
+    ln -sfn "versions/$VERSION" "$PREFIX/current"
+  fi
+fi
+NAME="$(ls "$PREFIX/current/lib/node_modules" | head -n 1)"
+LAUNCHER="$PREFIX/current/lib/node_modules/$NAME/bin/polyphemus.mjs"
 [ -f "$LAUNCHER" ] || fail "the package installed, but its launcher isn't at $LAUNCHER."
 # Small wrappers rather than npm's links: they run the Node this install chose, whatever else is on
 # PATH later, and `poly update` finds the same npm.

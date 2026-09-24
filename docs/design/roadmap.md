@@ -54,28 +54,34 @@ for whoever picks the work up next.
 Left, in order:
 
 1. ~~**The name.**~~ Polyphemus, on polyphemus.ai (2026-09-21).
-2. **Accounts** (the owner): a GitHub organisation and empty repository (`polyphemus` itself is taken
-   there), the npm package's trusted publisher, private vulnerability reporting on. *Under way
-   (2026-09-23):* a public stand-in package, kept apart from Polyphemus, rehearses the release
-   (see RELEASING.md). Polyphemus gets a GitHub account and organisation of its own. Done the same day: mail for polyphemus.ai (Google Workspace, with SPF, DKIM
-   and DMARC; `releases@`, `security@`, `hello@` and `dmarc@` as aliases), the npm account
-   `polyphemus-releases` (on the releases alias, passkey two-factor) and the npm organisation
-   `polyphemus`, which holds the `@polyphemus` scope the code's own package names use; and
-   `polyphemus` claimed on npm with a placeholder, 0.0.1. Next: the trusted publisher (once the
-   public repository exists), and the GitHub organisation's switch letting Actions open pull
-   requests.
-3. **The first public commit:** repository, homepage and bugs links in the package (they wait on the
-   organisation's name); then
-   `scripts/export-public.mjs <folder> --commit --author "<brand> <address>"`, pushed by the owner.
-4. **First runs:** CI on Linux and macOS (the launchd service has only been tested on paper), then a
-   first changeset and release. Ready for it (2026-09-21): update channels (`poly update --channel
-   beta|stable`), the install script (`install/install.sh`, tested here with both this computer's
-   Node and a downloaded one, and in CI on both systems), a GitHub release per version with the
-   script attached, and polyphemus.ai in About and the package. Still to do: the repository and bugs
-   links (they wait on where the public repository lives), and the desktop apps and Windows doors
-   from the install decision (6badb8b).
-5. **Development moves to the public repository:** the private copy is archived; clone the public one
-   back to the same path, and run `node scripts/install-hooks.mjs`.
+2. ~~**Accounts**~~ done 2026-09-23: mail for polyphemus.ai (Google Workspace, with SPF, DKIM and
+   DMARC; `releases@`, `security@`, `hello@`, `github@` and `dmarc@` as aliases), the GitHub account
+   `polyphemus-ai` (two-factor; repositories under it, no organisation for now), the npm account
+   `polyphemus-releases` (passkey two-factor), the npm organisation `polyphemus` (the `@polyphemus`
+   scope), and `polyphemus` claimed on npm with a placeholder, 0.0.1.
+3. ~~**The rehearsal**~~ done 2026-09-23: `polyphemus-ai/release-rehearsal` released this code as
+   `polyphemus-rehearsal` — 0.1.0, a beta, and 0.1.1 — through the real workflow, with trusted
+   publishing and provenance, and a clean-machine install and `poly update` checked after each. It
+   found eight things that would have broken the first release; RELEASING.md lists them under Traps.
+3½. ~~**Updates that can't leave it broken**~~ done 2026-09-24, before the first release (the version
+   that runs an update is the old one): versions beside each other, the new one checked against a copy
+   of the data, a backup, a watched restart that goes back on its own, `poly rollback`, and data that
+   only ever adds ([upgrades.md](upgrades.md)).
+4. **The first release** (waits on the owner's go): replace the changesets with one "The first
+   release" at 0.0.0 → 0.1.0; `scripts/export-public.mjs --commit` into `polyphemus-ai/polyphemus`, with
+   its About; the trusted publisher on npm (the owner); approve and merge the Version packages pull
+   request (the owner); `scripts/release-check.sh`; polyphemus.ai/install.sh and install.ps1 redirected
+   to the GitHub release (mail for the website's agents). Still to come after it: the desktop apps
+   and the other install doors from the install decision (6badb8b).
+5. **Development moves to the public repository** (right after 0.1.0): the private copy is archived,
+   not deleted (a bundle, or a private repository); clone the public one back to the same path, and
+   run `node scripts/install-hooks.mjs`. What `scripts/private-files.mjs` keeps out (research, memory,
+   the move-in notes, the original brand files) gets a private home of its own. Decide then: straight
+   to `main`, or pull requests.
+6. **The website and docs move into this repository** (after 5; the website team's work, in
+   Polyphemus): the files without their history, in a folder of their own outside the pnpm
+   workspace; the Terraform stays private; the deploy repointed; polyphemus.ai/install.sh and
+   /install.ps1 redirected to the latest GitHub release; the old repository archived.
 
 ## Now, alongside publishing: who can do what, proven
 

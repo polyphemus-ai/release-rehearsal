@@ -30,6 +30,7 @@ import {
   EFFORTS,
   formatUsage,
   Polyphemus,
+  polyphemusHome,
   PolyphemusError,
   offList,
   agentModel,
@@ -52,7 +53,8 @@ import {
 import { choiceItems, modelChoices, printModels, targetOf } from './models.js';
 import { pick, readHidden } from './picker.js';
 import { bold, cyan, dim, green, oneLine, red, Renderer, yellow } from './render.js';
-import { service } from './service.js';
+import { service, unhealthy, waitForIdle } from './service.js';
+import { installPlace, rollback, sayResult, selfCheck, upgrade, type Place } from './upgrade.js';
 import { inWsl, serviceManager } from './service-manager.js';
 import { doctorCommand } from './doctor.js';
 import { COMMANDS as COMMAND_SPECS, findCommand, usageText } from './commands.js';
@@ -166,6 +168,8 @@ async function main(): Promise<void> {
       until: { type: 'string' },
       // poly update --check
       check: { type: 'boolean' },
+      // poly rollback --restore
+      restore: { type: 'boolean' },
       channel: { type: 'string' },
       max: { type: 'string' },
     },
@@ -176,6 +180,13 @@ async function main(): Promise<void> {
   if (positionals[0] === 'mcp') {
     if (positionals[1] !== 'serve') throw new PolyphemusError('Usage: poly mcp serve', 'USAGE', 'poly help mcp serve');
     return mcpServe();
+  }
+
+  // Before anything opens this computer's data: run by an update with the version it's about to
+  // switch to, and that version mustn't change the real data before it has checked a copy.
+  if (positionals[0] === 'self-check') {
+    jsonOutput = wantsJson(values.json);
+    return selfCheckCommand();
   }
 
   const polyphemus = await Polyphemus.open();
@@ -214,6 +225,7 @@ async function main(): Promise<void> {
   if (command === 'devices') return devices(polyphemus, rest);
   if (command === 'loop') return loopCommand(polyphemus, rest, values, cwd);
   if (command === 'update') return updateCommand(polyphemus, values);
+  if (command === 'rollback') return rollbackCommand(polyphemus, { restore: values.restore === true, now: values.now === true });
   if (command === 'intake') return intakeCommand(polyphemus, rest, values, cwd);
   if (command) {
     const words = [...new Set(COMMAND_SPECS.map((c) => c.usage.split(' ')[1] ?? '').filter((w) => /^[a-z]/.test(w)))];
@@ -1104,7 +1116,7 @@ async function intakeCommand(polyphemus: Polyphemus, words: string[], values: { 
  * `poly update`: the newest polyphemus from npm, then the service restarted onto it. From a checkout
  * of the repository it says how to update that instead: git, then poly service update.
  */
-async function updateCommand(polyphemus: Polyphemus, values: { check?: boolean; channel?: string }): Promise<void> {
+async function updateCommand(polyphemus: Polyphemus, values: { check?: boolean; channel?: string; now?: boolean }): Promise<void> {
   let channel = polyphemus.config.updates.channel;
   if (values.channel !== undefined) {
     if (values.channel !== 'stable' && values.channel !== 'beta') throw new PolyphemusError('The channel is stable or beta.', 'USAGE', 'poly update --channel beta');
@@ -1128,25 +1140,73 @@ async function updateCommand(polyphemus: Polyphemus, values: { check?: boolean; 
   }
   if (!status.newer) return console.log(green(`✓ polyphemus ${status.current} is the newest.`));
   if (values.check) return console.log(`polyphemus ${status.latest} is out (you have ${status.current}). Install it: poly update`);
-  // A global npm install is the shape updated in place: npm's own global folder, or the one the
-  // installer (install/install.sh) chose, which is the same layout under another prefix.
-  const here = assetPath('cli', '');
-  const prefix = /^(.*)[\\/]lib[\\/]node_modules[\\/]polyphemus-rehearsal[\\/]/.exec(here)?.[1];
-  if (!prefix) {
-    return console.log(`polyphemus ${status.latest} is out. This copy wasn’t installed with npm install -g, so update it the way you installed it (for example: npm install polyphemus@latest).`);
+  const place = installPlace();
+  if (!place) {
+    return console.log(`polyphemus ${status.latest} is out. This copy wasn’t installed with the installer or npm install -g, so update it the way you installed it.`);
   }
-  console.log(dim(`Installing polyphemus ${status.latest}…`));
-  const installed = spawnSync('npm', ['install', '-g', '--prefix', prefix, '--no-fund', '--no-audit', '--no-update-notifier', '--loglevel=error', `polyphemus-rehearsal@${status.latest}`], { stdio: 'inherit' });
-  if (installed.status !== 0) throw new PolyphemusError('npm couldn’t install it. If it needs permission, run the same with sudo, or set up npm to install globally without it.', 'FAILED', `npm install -g --prefix ${prefix} polyphemus@${status.latest}`);
-  let active = false;
+  const result = await upgrade(status.latest, upgradeDeps(polyphemus, place, values.now === true));
+  sayResult(result, (line) => console.log(line));
+  if (!result.ok) process.exitCode = 1;
+  else if (!serviceRunning() && daemonAnswering()) console.log(yellow('polyphemus is running in a terminal (poly serve): stop it and start it again to use the new version.'));
+}
+
+/** What an update or a rollback needs from this computer: the service, its health, and waiting for work. */
+function upgradeDeps(polyphemus: Polyphemus, place: Place, now: boolean) {
+  const manager = (() => {
+    try {
+      const m = serviceManager();
+      return m.isActive() ? m : undefined;
+    } catch {
+      return undefined; // no service manager here (Windows): nothing in the background to restart
+    }
+  })();
+  return {
+    home: polyphemus.home,
+    place,
+    service: manager,
+    unhealthy: () => unhealthy(daemonPort()),
+    waitForIdle: () => waitForIdle(now),
+    log: (line: string) => console.log(line),
+  };
+}
+
+const serviceRunning = (): boolean => {
   try {
-    const manager = serviceManager();
-    active = manager.isActive();
-    if (active) manager.restart();
+    return serviceManager().isActive();
   } catch {
-    // No service manager here (Windows): nothing running in the background to restart.
+    return false;
   }
-  console.log(green(`✓ polyphemus ${status.latest} installed${active ? ', and the service restarted onto it' : ''}.`));
+};
+
+const daemonAnswering = (): boolean => {
+  try {
+    const status = JSON.parse(readFileSync(join(polyphemusHome(), 'daemon.json'), 'utf8')) as { pid: number };
+    process.kill(status.pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/** `poly rollback`: back to the version before the last update. */
+async function rollbackCommand(polyphemus: Polyphemus, opts: { restore: boolean; now: boolean }): Promise<void> {
+  const place = installPlace();
+  if (!place) throw new PolyphemusError('This copy runs from a checkout of the repository: go back with git, or poly service rollback for the service.', 'USAGE');
+  const result = await rollback({ ...upgradeDeps(polyphemus, place, opts.now), restoreData: opts.restore });
+  console.log(result.ok ? green(`✓ ${result.why}`) : yellow(`✗ ${result.why}`));
+  if (!result.ok) process.exitCode = 1;
+}
+
+/** `poly self-check`: this version against a copy of this computer's data, changing nothing. */
+async function selfCheckCommand(): Promise<void> {
+  const results = await selfCheck(polyphemusHome());
+  const ok = results.every((r) => r.ok);
+  if (jsonOutput) printJson({ version: VERSION, ok, checks: results });
+  else {
+    for (const r of results) console.log(r.ok ? `${green('✓')} ${r.name}` : `${yellow('✗')} ${r.name}: ${r.why}`);
+    console.log(ok ? green(`polyphemus ${VERSION} works with this computer’s data.`) : yellow(`polyphemus ${VERSION} can’t work with this computer’s data yet: nothing was changed.`));
+  }
+  if (!ok) process.exitCode = 1;
 }
 
 /** Usage meters with forecasts: will each window last until it resets? */

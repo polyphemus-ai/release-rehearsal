@@ -30,6 +30,8 @@ export interface ServiceManager {
   /** Writes the description and registers it, so it starts with this computer. */
   register(o: UnitOptions): void;
   start(): void;
+  /** Stops it for now, without unregistering: an update stops it to put data back safely. */
+  stop(): void;
   restart(): void;
   isActive(): boolean;
   /** Stops it, unregisters it, and removes the file. */
@@ -131,6 +133,7 @@ function systemd(): ServiceManager {
       systemctl('enable', UNIT);
     },
     start: () => systemctl('start', UNIT),
+    stop: () => systemctl('stop', UNIT),
     restart: () => systemctl('restart', UNIT),
     isActive: () => active(UNIT),
     unregister() {
@@ -176,7 +179,13 @@ function launchd(): ServiceManager {
       if (loaded()) spawnSync('launchctl', ['bootout', target], { stdio: 'ignore' });
       launchctl('bootstrap', domain, file);
     },
-    start: () => launchctl('kickstart', target),
+    // Stopped by booting it out (KeepAlive would bring back one that was only killed), so starting
+    // may have to bootstrap it again first.
+    start: () => {
+      if (!loaded()) launchctl('bootstrap', domain, file);
+      launchctl('kickstart', target);
+    },
+    stop: () => void (loaded() && spawnSync('launchctl', ['bootout', target], { stdio: 'ignore' })),
     restart: () => launchctl('kickstart', '-k', target),
     isActive: () => (spawnSync('launchctl', ['print', target], { encoding: 'utf8' }).stdout ?? '').includes('state = running'),
     unregister() {

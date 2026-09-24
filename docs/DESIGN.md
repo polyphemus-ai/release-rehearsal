@@ -54,6 +54,7 @@ Each pillar has its own design doc:
 | Scheduling | [design/scheduling.md](design/scheduling.md) | Routines with triggers (time, events, capacity resets); cheap code checks before any model wakes; every firing recorded; quiet unless something changed |
 | Agents, channels, and people | [design/agents.md](design/agents.md) | Each project is a server: a roster of agents and people, channels where they work together, threads for tasks, and DMs. An agent owns its model route, persona, skills (its own or shared), and routines; templates and skills come built in or from a reviewed store |
 | Projects | [design/projects.md](design/projects.md) | A project is a folder Polyphemus knows about: `AGENTS.md` and `.polyphemus/` in the folder (safe to commit), memory private in `~/.polyphemus`; code lives in `~/projects` or wherever it already is, never inside `~/.polyphemus` |
+| Upgrades | [design/upgrades.md](design/upgrades.md) | Each version beside the last; the new one checks itself on a copy of your data before the switch; a backup, a watched restart, and going back on its own if it doesn't come up; data only ever adds |
 | Agent-friendly CLI | [design/cli-for-agents.md](design/cli-for-agents.md) | One command registry that generates help, JSON schemas, MCP tools, and the agent guide; config changes planned, validated, reversible, with hand edits detected |
 
 ## Non-goals (for now)
@@ -226,6 +227,19 @@ what's built, what's now and what's later. Every design doc's own build order ho
 
 ## Decisions log
 
+- 2026-09-24: **An update can fail, but it can't leave Polyphemus broken.** Versions are installed
+  beside each other and switched; the new one checks itself against a copy of the data first; the data
+  is backed up; a service that doesn't come up has the old version and the data put back on its own.
+  Data only ever adds, so going back a version is safe; a change that can't be read by an older
+  version raises the data's generation. Built before the first release, because the version that runs
+  an update is the old one ([design/upgrades.md](design/upgrades.md)).
+- 2026-09-23: **The first release is a fresh 0.1.0, rehearsed first.** Its changelog is one line, not
+  the history of how it was built. Anything that changes how Polyphemus is released is tried on the
+  public stand-in (`polyphemus-rehearsal`, `scripts/rehearse.sh`) before the real package. Releasing is
+  always a person's merge; publishing is by trusted publishing from the workflow, never a token.
+- 2026-09-23: **Polyphemus's public repositories name no AI as a co-author.** GitHub lists every
+  `Co-Authored-By` as a contributor; the owner wants the contributors to be people and Polyphemus's
+  own identities.
 - 2026-09-21: **Install with the same doors on every computer.** macOS, Linux, and Windows each get
   an app download, a one-liner, npm, pnpm, and a from-source install. The apps and the one-liners
   install Node when it isn’t there, then the daemon, then open the web app. On Windows that

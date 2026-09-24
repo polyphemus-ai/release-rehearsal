@@ -42,7 +42,7 @@ describe('update checks', () => {
       const first = await checkForUpdate(home, { enabled: true, now, current: '0.2.0', installedFrom: 'npm' });
       expect(first).toMatchObject({ current: '0.2.0', latest: '0.3.0', newer: true, checkedAt: now });
       expect(npm.asked).toHaveLength(1);
-      expect(npm.asked[0]!.url).toBe('/-/package/polyphemus-rehearsal/dist-tags');
+      expect(npm.asked[0]!.url).toBe('/-/package/polyphemus/dist-tags');
       // Nothing about the install goes with it: no cookie, no identifying headers of polyphemus's own.
       expect(Object.keys(npm.asked[0]!.headers).filter((h) => /cookie|authorization|x-polyphemus/i.test(h))).toEqual([]);
       // Within the day: the remembered answer, no second request.

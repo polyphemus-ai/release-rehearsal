@@ -56,6 +56,9 @@ jobs:
         if: runner.os == 'Linux'
       # Installs the package exactly as it would be published, into an empty folder, and runs it.
       - run: node scripts/pack-check.mjs
+      # Updating an install: beside the running version, checked against a copy of the data, backed
+      # up, switched; a version that can't read the data refused; and rolled back.
+      - run: node scripts/upgrade-check.mjs
       # The one-liner, run for real against that same package, into a home folder of its own.
       - name: The install script
         run: |

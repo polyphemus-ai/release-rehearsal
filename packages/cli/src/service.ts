@@ -1,12 +1,14 @@
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
+import { DatabaseSync } from 'node:sqlite';
 import { homedir, userInfo } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assetPath, bundled, polyphemusHome, PolyphemusError } from '@polyphemus/core';
 import { cyan, dim, green, yellow } from './render.js';
 import { serviceManager, type ServiceManager } from './service-manager.js';
+import { stableLauncher } from './upgrade.js';
 
 /** The checkout this command runs from: where the service's copies come from. */
 const SOURCE = fileURLToPath(new URL('../../../', import.meta.url));
@@ -150,7 +152,8 @@ async function installedService(manager: ServiceManager, action: 'install' | 'up
   const busy = await portInUse(port);
   const wasActive = manager.isActive();
   if (wasActive) await waitForIdle(opts.now);
-  manager.register({ node: process.execPath, launcher: assetPath('cli', 'bin/polyphemus.mjs'), cwd, path: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin', port: process.env.POLYPHEMUS_PORT });
+  // Through `current` in the installer's layout, so an update's switch moves the service with it.
+  manager.register({ node: process.execPath, launcher: stableLauncher(), cwd, path: process.env.PATH ?? '/usr/local/bin:/usr/bin:/bin', port: process.env.POLYPHEMUS_PORT });
   if (wasActive) manager.restart();
   else manager.start();
   console.log(`${green('✓')} polyphemus ${version} runs in the background, and starts when this computer does.`);
@@ -227,15 +230,17 @@ function currentCommit(): string | undefined {
  * False if they were still working when the time ran out — it never waits for ever, and a session that
  * asked for this would otherwise be waiting for itself.
  */
-async function waitForIdle(now = false, timeoutMs = IDLE_WAIT_MS): Promise<boolean> {
+export async function waitForIdle(now = false, timeoutMs = IDLE_WAIT_MS): Promise<boolean> {
   let announced = false;
   const until = Date.now() + timeoutMs;
   for (;;) {
     const status = daemonStatus();
-    if (now || !status || status.running === 0) return true;
+    // Workflow runs as well as turns: a run between two steps isn't mid-turn, but a restart still cuts it.
+    const busy = (status?.running ?? 0) + (status ? activeRuns() : 0);
+    if (now || busy === 0) return true;
     if (Date.now() > until) return false;
     if (!announced) {
-      console.log(yellow(`Waiting for ${status.running} running session${status.running === 1 ? '' : 's'} to finish before restarting. Ctrl+C to cancel, or --now to restart anyway.`));
+      console.log(yellow(`Waiting for ${busy} running session${busy === 1 ? '' : 's'} and run${busy === 1 ? '' : 's'} to finish before restarting. Ctrl+C to cancel, or --now to restart anyway.`));
       announced = true;
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -259,8 +264,34 @@ async function goLive(dir: string, manager: ServiceManager, port: number, opts: 
   return { ok: false, why, wentBackTo: basename(from) };
 }
 
+/** Workflow runs going or about to go (not ones waiting on a person: a restart asks their gate again). */
+function activeRuns(): number {
+  try {
+    const db = new DatabaseSync(join(polyphemusHome(), 'sessions.db'), { readOnly: true });
+    try {
+      return (db.prepare("SELECT count(*) AS n FROM runs WHERE status IN ('queued', 'running', 'retrying')").get() as { n: number }).n;
+    } finally {
+      db.close();
+    }
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Why a restarted daemon isn't healthy, or nothing: it has to answer, and still be answering a few
+ * seconds later — one that starts and then falls over would otherwise pass.
+ */
+export async function unhealthy(port: number, timeoutMs = HEALTHY_MS): Promise<string | undefined> {
+  const first = await answers(port, timeoutMs);
+  if (first) return first;
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+  const again = await answers(port, 10_000);
+  return again ? `it answered, then stopped (${again})` : undefined;
+}
+
 /** Why the daemon isn't answering on its port, or nothing once it is. */
-async function unhealthy(port: number, timeoutMs = HEALTHY_MS): Promise<string | undefined> {
+async function answers(port: number, timeoutMs: number): Promise<string | undefined> {
   const until = Date.now() + timeoutMs;
   let last = 'it never answered';
   for (;;) {

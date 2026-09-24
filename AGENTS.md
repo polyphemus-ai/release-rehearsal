@@ -35,6 +35,7 @@ node scripts/smoke.mjs --shots <dir>  # …and screenshots at 400/1200px, light 
 node scripts/phases.mjs <subject>     # one loop of an animation, held still at several moments
 pnpm build                            # the published package, into dist/polyphemus
 node scripts/pack-check.mjs           # install that package into an empty folder, and run it
+node scripts/upgrade-check.mjs        # install it with install.sh, update it, refuse a bad update, roll back
 node scripts/leak-check.mjs           # nothing secret or private in the tracked files (bar scripts/private-files.mjs)
 pnpm changeset                        # record a user-visible change (patch / minor / major)
 pnpm poly                          # the CLI from source (tsx; no build needed)
@@ -43,8 +44,8 @@ pnpm poly service update           # deploy your latest commit to the background
 ```
 
 **Done means:** `pnpm typecheck && pnpm test` pass, `node scripts/smoke.mjs` passes for any app
-change, and `node scripts/pack-check.mjs` passes for anything that touches packaging, file paths or
-dependencies. CI runs the same on Linux and macOS, plus a secret scan.
+change, and `node scripts/pack-check.mjs` and `node scripts/upgrade-check.mjs` pass for anything that touches
+packaging, installing, updating, file paths, dependencies or the database's shape. CI runs the same on Linux and macOS, plus a secret scan.
 
 Run `node scripts/install-hooks.mjs` once per clone: it makes every commit run the leak check.
 
@@ -62,7 +63,7 @@ Run `node scripts/install-hooks.mjs` once per clone: it makes every commit run t
 | `packages/core/bin` | Small standalone servers Polyphemus starts: approvals, the connections gateway, GitHub, Google; `git-askpass.sh` |
 | `packages/daemon/src` | `server.ts` (HTTP + SSE, pairing, people and access, questions, intake), `runs.ts` (the workflow engine), `connections-api.ts`, `access.ts`, `scheduler.ts`, `tailscale.ts` |
 | `packages/daemon/web` | The app: plain JavaScript (`app.js`, one file), `style.css`, a service worker. No bundler, no framework |
-| `packages/cli/src` | The `polyphemus` command: `main.ts`, `commands.ts` (the one command registry: help, JSON schemas, MCP tools), `service.ts` + `service-manager.ts` (systemd, launchd), `mcp.ts` |
+| `packages/cli/src` | The `polyphemus` command: `main.ts`, `commands.ts` (the one command registry: help, JSON schemas, MCP tools), `service.ts` + `service-manager.ts` (systemd, launchd), `upgrade.ts` (updates that can't leave it broken), `mcp.ts` |
 | `packages/*/test` | Vitest. Daemon tests start a real daemon on port 0 with fake providers and fake services |
 | `scripts/` | `smoke.mjs`, `phases.mjs` (animation, moment by moment), `build.mjs`, `pack-check.mjs`, `leak-check.mjs`, `export-public.mjs`, `install-hooks.mjs` |
 | `docs/` | `DESIGN.md` (architecture, pillars, decisions log), `design/` (one doc per pillar, the roadmap, the UI briefs and mockups), `DEVELOPING.md`, `RELEASING.md` |
