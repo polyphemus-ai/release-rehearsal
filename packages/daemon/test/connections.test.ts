@@ -263,8 +263,10 @@ describe.skipIf(!findChrome())('the Browser connection', () => {
           call('c5', 'browser__open_page', { url: `${origin}/me` }),
         ]),
       );
+      // Up to a minute, not a count of tries: a runner starting Chrome cold took longer than the nine
+      // seconds 300 tries gave, and the thread was still going when the test read it (2026-09-23).
       const settle = async (id: string) => {
-        for (let i = 0; i < 300 && (await owner(`/api/sessions/${id}`)).data.running; i++) await new Promise((r) => setTimeout(r, 30));
+        for (const until = Date.now() + 60_000; Date.now() < until && (await owner(`/api/sessions/${id}`)).data.running; ) await new Promise((r) => setTimeout(r, 30));
       };
       const results = (id: string) => polyphemus.store.messages(id).flatMap((m) => m.content).filter((b) => b.type === 'tool_result') as Array<{ content: string; isError: boolean }>;
       const first = (await owner('/api/sessions', { text: 'check my account page', project: shop.slug })).data;
@@ -287,7 +289,7 @@ describe.skipIf(!findChrome())('the Browser connection', () => {
     } finally {
       site.close();
     }
-  }, 60_000);
+  }, 120_000);
 });
 
 describe.skipIf(!findChrome())('browser sign-ins', () => {
@@ -401,7 +403,7 @@ describe.skipIf(!findChrome())('browser sign-ins', () => {
       const done = { content: [{ type: 'text' as const, text: 'done' }], stopReason: 'end_turn' as StopReason };
       polyphemus.registry.use('openai', new Scripted([call('a1', `${origin}/me`), done, call('b1', `${origin}/me`), done, call('c1', `${origin}/me`), done]));
       const settle = async (sid: string) => {
-        for (let i = 0; i < 300 && (await owner(`/api/sessions/${sid}`)).data.running; i++) await new Promise((r) => setTimeout(r, 30));
+        for (const until = Date.now() + 60_000; Date.now() < until && (await owner(`/api/sessions/${sid}`)).data.running; ) await new Promise((r) => setTimeout(r, 30));
       };
       const results = (sid: string) => polyphemus.store.messages(sid).flatMap((m) => m.content).filter((b) => b.type === 'tool_result') as Array<{ content: string; isError: boolean }>;
 
@@ -443,7 +445,7 @@ describe.skipIf(!findChrome())('browser sign-ins', () => {
     } finally {
       site.close();
     }
-  }, 90_000);
+  }, 180_000);
 
   const TOKEN = 'stored-token-value-0123456789';
   const NEW_TOKEN = 'stored-token-value-9876543210';
@@ -525,7 +527,7 @@ describe.skipIf(!findChrome())('browser sign-ins', () => {
       const done = { content: [{ type: 'text' as const, text: 'done' }], stopReason: 'end_turn' as StopReason };
       polyphemus.registry.use('openai', new Scripted([call('a1', `${origin}/me`), done]));
       const settle = async (sid: string) => {
-        for (let i = 0; i < 300 && (await owner(`/api/sessions/${sid}`)).data.running; i++) await new Promise((r) => setTimeout(r, 30));
+        for (const until = Date.now() + 60_000; Date.now() < until && (await owner(`/api/sessions/${sid}`)).data.running; ) await new Promise((r) => setTimeout(r, 30));
       };
       const results = (sid: string) => polyphemus.store.messages(sid).flatMap((m) => m.content).filter((b) => b.type === 'tool_result') as Array<{ content: string; isError: boolean }>;
 
@@ -544,5 +546,5 @@ describe.skipIf(!findChrome())('browser sign-ins', () => {
     } finally {
       site.close();
     }
-  }, 90_000);
+  }, 180_000);
 });

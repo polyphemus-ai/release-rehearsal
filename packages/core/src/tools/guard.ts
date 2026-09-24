@@ -78,13 +78,29 @@ function realPath(path: string): string {
  * gets through (2026-09-23). It's named as written.
  */
 export function credentialPathFor(path: string, home = homedir()): string | undefined {
-  const guarded = credentialPaths(home).flatMap((store) => [[store, store], [realPath(store), store]] as const);
+  const guarded = storesAsResolved(home);
   for (const candidate of new Set([normalize(path), realPath(path)])) {
     const hit = guarded.find(([g]) => candidate === g || candidate.startsWith(g + sep));
     if (hit) return hit[1];
     if (isEnvFile(candidate)) return candidate;
   }
   return undefined;
+}
+
+/**
+ * Each store as written and as it resolves, worked out once a minute rather than on every check: the
+ * guard runs on every file a tool touches, and resolving a path under an automounted folder (macOS's
+ * /home) can take seconds (2026-09-23). A store moved behind a link is seen as moved within the minute.
+ */
+const resolved = new Map<string, { at: number; stores: ReadonlyArray<readonly [string, string]> }>();
+function storesAsResolved(home: string): ReadonlyArray<readonly [string, string]> {
+  const written = credentialPaths(home);
+  const key = written.join('\0');
+  const kept = resolved.get(key);
+  if (kept && Date.now() - kept.at < 60_000) return kept.stores;
+  const stores = written.flatMap((store) => [[store, store], [realPath(store), store]] as const);
+  resolved.set(key, { at: Date.now(), stores });
+  return stores;
 }
 
 /**
