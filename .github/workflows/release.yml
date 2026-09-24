@@ -3,6 +3,11 @@ name: Release
 # On main: while changesets are waiting, keep a "Version packages" pull request up to date. Merging
 # it bumps the version and changelog; this then builds the one polyphemus package and publishes it to
 # npm with provenance (npm trusted publishing — no token stored here), and tags the release.
+#
+# Two jobs, so the one that can publish runs as little as possible: tests and the pull request run
+# without permission to publish; publishing gets it, and builds and publishes the commit the first
+# job tested (security review, 2026-09-24). Actions are pinned to commits, not tags a repository can
+# move; the tag each was is beside it.
 
 on:
   push:
@@ -10,34 +15,37 @@ on:
 
 concurrency: release
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+permissions: {}
 
 jobs:
-  release:
+  version:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      publish: ${{ steps.check.outputs.publish }}
+      version: ${{ steps.check.outputs.version }}
+      commit: ${{ steps.check.outputs.commit }}
     steps:
       # main as it is now, not the commit that started this run: runs wait their turn, and one started
       # just before the Version packages merge, finishing after it, reopened that pull request from
       # the old commit (found by the release rehearsal, 2026-09-23).
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: main
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: pnpm
-          registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck && pnpm test
       - id: changesets
         # v2, for Changesets 3: v1 read a beta's .changeset/pre folder as an old-style changeset and
-        # stopped the first beta (release rehearsal, 2026-09-23). The Publish step below tags and
-        # makes the GitHub release, so the action doesn't.
-        uses: changesets/action@v2
+        # stopped the first beta (release rehearsal, 2026-09-23). The publish job tags and makes the
+        # GitHub release, so the action doesn't.
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           version-script: pnpm changeset version
           pr-title: Version packages
@@ -45,15 +53,41 @@ jobs:
           create-github-releases: false
           push-git-tags: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
-      # Nothing waiting and this version isn't on npm yet: publish it.
-      - name: Publish
+      # Nothing waiting and this version isn't on npm yet: the publish job publishes this commit.
+      - id: check
         if: steps.changesets.outputs.has-changesets == 'false'
         run: |
           VERSION=$(node -p "require('./packages/cli/package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           if npm view "polyphemus-rehearsal@$VERSION" version >/dev/null 2>&1; then
             echo "polyphemus $VERSION is already published."
-            exit 0
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
+
+  publish:
+    needs: version
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the tag and the GitHub release
+      id-token: write # npm trusted publishing, and its provenance
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.version.outputs.commit }}
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Publish
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
           node scripts/pack-check.mjs
           TAG=latest
           case "$VERSION" in *-*) TAG=next ;; esac

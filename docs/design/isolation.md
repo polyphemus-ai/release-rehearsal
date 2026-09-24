@@ -25,7 +25,7 @@ skills, agents, a project's AGENTS.md.
 
 ## The shape: brain on the host, hands in a worker
 
-Following OpenClaw's sandbox (seen running on this machine): **the thinking stays on the host, and
+Following OpenClaw's sandbox: **the thinking stays on the host, and
 everything that touches files or runs a command happens in a worker container.**
 
 - **On the host:** the daemon, the vault, connections and their credentials, Polyphemus's own loop for API

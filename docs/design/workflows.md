@@ -13,7 +13,7 @@ model does the work inside a step. Every reliable system the research covered dr
 line:
 
 - Anthropic's *Building effective agents*
-- Armin Ronacher's *The Coming Loop* ("the Polyphemus decides whether that was actually the end")
+- Armin Ronacher's *The Coming Loop* ("the harness decides whether that was actually the end")
 - Temporal
 - GitHub's coding agent
 - Factory Missions

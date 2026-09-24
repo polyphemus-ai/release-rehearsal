@@ -9,19 +9,19 @@ and [../AGENTS.md](../AGENTS.md) is where to start if you're changing the code.
 ## Goals
 
 - **Multiple providers as a first-class feature.** Claude, OpenAI, and Grok from day one,
-  each with its own auth method (API key now; OAuth and CLI integrations planned).
+  each through its API with a key, or through the vendor's own CLI on a subscription.
 - **Legible sessions.** Every conversation is a row you can list, name, resume, and switch
   models inside.
-- **Headless core.** The core never touches a terminal. Clients (terminal now; daemon, app,
-  and voice later) sit on top of the same events.
+- **Headless core.** The core never touches a terminal. Clients (the terminal, and the daemon's
+  phone-first web app) sit on top of the same events.
 - **Simple.** Features get added when they're missed, not up front.
 - **Best practice by default.** Defaults come from researching what the leading teams do
-  (sources are cited in each design doc), and are then checked against what failed in our
-  OpenClaw setup.
+  (sources are cited in each design doc), and are then checked against what failed in earlier agent
+  setups.
 
 ## What makes Polyphemus different
 
-The owner's list, 2026-09-11, in their order. Every feature should serve one of these; anything that
+The list, 2026-09-11, in priority order. Every feature should serve one of these; anything that
 serves none of them needs a reason.
 
 1. **Multiplayer native.** Teams of agents, and later people, working in the same place — not a
@@ -52,24 +52,24 @@ Each pillar has its own design doc:
 | Computer use | [design/computer-use.md](design/computer-use.md) | Canonical action schema; browser first (accessibility tree), then desktop sandboxes; the model never sees passwords |
 | App | [design/app.md](design/app.md) | Daemon as source of truth; one place for what's waiting on you; a phone-first web app the daemon serves over your tailnet (native apps and voice are later) |
 | Scheduling | [design/scheduling.md](design/scheduling.md) | Routines with triggers (time, events, capacity resets); cheap code checks before any model wakes; every firing recorded; quiet unless something changed |
-| Agents, channels, and people | [design/agents.md](design/agents.md) | Each project is a server: a roster of agents and people, channels where they work together, threads for tasks, and DMs. An agent owns its model route, persona, skills (its own or shared), and routines; templates and skills come built in or from a reviewed store |
+| Agents and people | [design/agents.md](design/agents.md) | Each project is a server: a roster of agents and people, threads where they work together, and DMs. An agent owns its model route, persona, skills (its own or shared), and routines; templates and skills come built in or from a reviewed store |
 | Projects | [design/projects.md](design/projects.md) | A project is a folder Polyphemus knows about: `AGENTS.md` and `.polyphemus/` in the folder (safe to commit), memory private in `~/.polyphemus`; code lives in `~/projects` or wherever it already is, never inside `~/.polyphemus` |
 | Upgrades | [design/upgrades.md](design/upgrades.md) | Each version beside the last; the new one checks itself on a copy of your data before the switch; a backup, a watched restart, and going back on its own if it doesn't come up; data only ever adds |
 | Agent-friendly CLI | [design/cli-for-agents.md](design/cli-for-agents.md) | One command registry that generates help, JSON schemas, MCP tools, and the agent guide; config changes planned, validated, reversible, with hand edits detected |
 
 ## Non-goals (for now)
 
-A public plugin marketplace, multiple chat channels, and server-side context compaction.
-Multiple people and plugins for agents are planned, not yet: see [design/roadmap.md](design/roadmap.md).
+A public plugin marketplace, and server-side context compaction. Plugins for agents are planned: see
+[design/roadmap.md](design/roadmap.md).
 
 ## Architecture
 
 ```
             ┌─────────────── clients ───────────────┐
-            │ terminal (now) │ Expo / Electron / voice (later) │
+            │ terminal        │ web app (phone first) │
             └───────┬───────────────────┬───────────┘
-                    │ in-process now; daemon + WebSocket API in phase 2
-                    │ (the daemon is the source of truth: sessions, runs, event log)
+                    │ the daemon: HTTP + server-sent events
+                    │ (the source of truth: threads, runs, event log)
             ┌───────▼───────────────────▼───────────┐
             │ core                                   │
             │  loop ─ providers ─ credentials        │
@@ -121,6 +121,7 @@ interface ModelProvider {
 |---|---|---|
 | `anthropic` | Anthropic Messages API (streaming, beta namespace) | Claude |
 | `openai-responses` | OpenAI Responses API (streaming, `store: false`, encrypted reasoning) | OpenAI; xAI Grok via `base_url` |
+| `openai-chat` | OpenAI Chat Completions | Ollama, OpenRouter, and anything else OpenAI-compatible |
 
 **Agent providers** (`core/src/agents/`) drive the vendors' own CLIs headlessly, on your
 subscriptions:
@@ -129,7 +130,7 @@ subscriptions:
 |---|---|
 | `claude-cli` | Claude Code, `stream-json` |
 | `codex-cli` | `codex exec --json` |
-| `grok-cli` | Grok Build, a Messages-format stream parsed by the same code as Claude's |
+| `claude-cli` (again) | Grok Build: a Messages-format stream, parsed by the same code as Claude's |
 
 They run their own loop and tools. Polyphemus keeps the canonical transcript and stores each
 CLI's native session id so it can resume that session.
@@ -139,8 +140,6 @@ CLI's native session id so it can resume that session.
   aren't Polyphemus tools.
 - **Errors** are classified (e.g. `quota_exhausted`), and rate-limit windows are read from each
   CLI (Claude's `rate_limit_event`, Codex's session log).
-
-Planned: `openai-chat` for Ollama, OpenRouter, and other compatible servers.
 
 Adapter details worth knowing:
 
@@ -162,7 +161,7 @@ Credentials are separate from providers: any provider can use any source.
 | `api_key` from an env var | ✅ |
 | `api_key` from `~/.polyphemus/credentials.json` (mode 0600, written by `poly login`) | ✅ |
 | `oauth` (PKCE / device code, stored and refreshed) | planned: only where the provider permits third-party use |
-| `cli` (the CLI owns its login; used by agent providers) | planned: phase 2 |
+| `cli` (the CLI owns its login; used by agent providers) | ✅ |
 
 Subscription access (Claude Max, ChatGPT, SuperGrok) goes through each vendor's official CLI
 as an agent provider. Polyphemus does not lift their OAuth tokens into its own API calls.
@@ -237,14 +236,16 @@ what's built, what's now and what's later. Every design doc's own build order ho
   the history of how it was built. Anything that changes how Polyphemus is released is tried on the
   public stand-in (`polyphemus-rehearsal`, `scripts/rehearse.sh`) before the real package. Releasing is
   always a person's merge; publishing is by trusted publishing from the workflow, never a token.
-- 2026-09-23: **Polyphemus's public repositories name no AI as a co-author.** GitHub lists every
-  `Co-Authored-By` as a contributor; the owner wants the contributors to be people and Polyphemus's
+- 2026-09-23: **Commits in the public repositories carry no AI co-author lines.** GitHub lists every
+  `Co-Authored-By` as a contributor, and the contributors listed should be people and Polyphemus's
   own identities.
 - 2026-09-21: **Install with the same doors on every computer.** macOS, Linux, and Windows each get
   an app download, a one-liner, npm, pnpm, and a from-source install. The apps and the one-liners
   install Node when it isn’t there, then the daemon, then open the web app. On Windows that
   includes a native daemon, which does not install WSL, and a WSL setup for the Linux daemon.
-  Updates can follow a dev channel or a stable one. The phone stays the web app.
+  Updates can follow a dev channel or a stable one. The phone stays the web app. (Built by the first
+  release: the one-liners, npm and from source on macOS and Linux, and on Windows the one-liner that
+  sets up WSL. The app downloads, a native Windows daemon and a dev channel are still to come.)
 
 - 2026-09-21: **A DM stays a DM.** Saying yes when an agent asks to bring another into a conversation
   that is one agent outside every project used to add them to it, and the DM became a group. It now
@@ -405,18 +406,18 @@ what's built, what's now and what's later. Every design doc's own build order ho
   an npm package, set up either from source or with npm. So nothing may assume this machine — every
   path comes from `POLYPHEMUS_HOME`, `projects_root`, or the config; the vault, its key, and the
   daemon's token are per-user and made on first run; and Polyphemus never reads another tool's
-  credential stores. The checkout lives in `~/projects/polyphemus` like any other project, not inside
-  another tool's folder.
+  credential stores. A checkout lives wherever other projects do, never inside another tool's folder.
 
 - 2026-09-11: The vault ships as a local encrypted file: AES-256-GCM per secret, sealed to its
   name, with the key in `~/.polyphemus/vault.key` (0600). It needs no account and no purchase, and
   it works unattended when the service starts at boot. 1Password becomes a second backend behind
   the same interface once the plan is confirmed. This supersedes the 2026-09-10 decision below.
 - 2026-09-10: 1Password service accounts are the vault; an `age` file is the offline fallback.
-- 2026-09-10: Expo (mobile and web) plus Electron (desktop) replace Tauri 2.
-- 2026-09-10: Phase 2 goes subscription-first. The OpenClaw fleet runs on Claude CLI, Codex,
-  and Grok subscriptions, not API keys (from a post-mortem of an earlier agent setup, kept privately).
-- 2026-09-10: The OpenClaw workflow report is folded into [design/workflows.md](design/workflows.md).
+- 2026-09-10: Expo (mobile and web) plus Electron (desktop) replace Tauri 2. (Superseded: the app is
+  a web app the daemon serves.)
+- 2026-09-10: Phase 2 goes subscription-first: the setups it learned from ran on Claude Code, Codex
+  and Grok subscriptions, not API keys.
+- 2026-09-10: What earlier workflow setups taught is folded into [design/workflows.md](design/workflows.md).
 - 2026-09-16: What Polyphemus is for, read against the field: trust, evidence and permissions that hold —
   not another open Grok Bot. Native apps, voice and cloud desktops are not being chased
   ([design/landscape.md](design/landscape.md)).
@@ -432,7 +433,7 @@ what's built, what's now and what's later. Every design doc's own build order ho
 - 2026-09-17: Craft, skills and personality travel with the agent, the way they would with a person:
   what an agent learned about its work in one project comes with it into the next, and into a new
   thread with anyone. That's the point of it being an agent rather than a project's notes. The room
-  rule still holds for everything about people (the owner, asked directly).
+  rule still holds for everything about people.
 - 2026-09-17: What an agent remembers is scoped by the room it was learned in, not by the agent: a
   memory can only be recalled where everyone present was already there. What you tell an agent alone
   stays in your own threads with it; what it learns about its work ("craft") travels anywhere but must

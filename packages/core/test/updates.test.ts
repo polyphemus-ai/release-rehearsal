@@ -58,6 +58,11 @@ describe('update checks', () => {
     }
   });
 
+  it('takes only a whole version from the registry: never a path, a terminal escape, or anything after it', () => {
+    for (const bad of ['99.0.0/../../../victim', '99.0.0 ', '1.2.3\u001b[31m', '1.2', '1.2.3-', '1.2.3-beta/..', '../1.2.3']) expect(newestOn('stable', { latest: bad })).toBeUndefined();
+    for (const good of ['1.2.3', '0.1.1-beta.0', '10.20.30-rc.1']) expect(newestOn('stable', { latest: good })).toBe(good);
+  });
+
   it('follows a channel: stable takes latest, beta takes next unless a stable release is newer', async () => {
     expect(newestOn('stable', { latest: '0.4.0', next: '0.5.0-beta.2' })).toBe('0.4.0');
     expect(newestOn('beta', { latest: '0.4.0', next: '0.5.0-beta.2' })).toBe('0.5.0-beta.2');

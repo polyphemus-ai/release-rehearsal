@@ -12,29 +12,29 @@ describe('the vault', () => {
     const used: Array<{ name: string; by: string }> = [];
     const vault = new Vault(home, { audit: (name, by) => used.push({ name, by }) });
 
-    vault.set('aws/bg-prod', 'AKIA-not-a-real-key', { kind: 'api-key', note: 'Game Night deploy' });
-    expect(vault.get('aws/bg-prod', 'you (terminal)')).toBe('AKIA-not-a-real-key');
-    expect(used).toEqual([{ name: 'aws/bg-prod', by: 'you (terminal)' }]);
-    expect(vault.list()).toEqual([expect.objectContaining({ name: 'aws/bg-prod', kind: 'api-key', note: 'Game Night deploy' })]);
-    vault.set('aws/bg-prod', 'AKIA-not-a-real-key', { use: { who: 'agent', agent: 'helper' } });
+    vault.set('aws/acme-prod', 'AKIA-not-a-real-key', { kind: 'api-key', note: 'Acme deploy' });
+    expect(vault.get('aws/acme-prod', 'you (terminal)')).toBe('AKIA-not-a-real-key');
+    expect(used).toEqual([{ name: 'aws/acme-prod', by: 'you (terminal)' }]);
+    expect(vault.list()).toEqual([expect.objectContaining({ name: 'aws/acme-prod', kind: 'api-key', note: 'Acme deploy' })]);
+    vault.set('aws/acme-prod', 'AKIA-not-a-real-key', { use: { who: 'agent', agent: 'helper' } });
     expect(vault.list()[0]).toMatchObject({ use: { who: 'agent', agent: 'helper' } });
     expect(JSON.stringify(vault.list())).not.toContain('AKIA-not-a-real-key');
 
     // The value is nowhere in the file, and only you can read it (or its key).
     const onDisk = readFileSync(vault.file, 'utf8');
     expect(onDisk).not.toContain('AKIA-not-a-real-key');
-    expect(onDisk).toContain('aws/bg-prod');
+    expect(onDisk).toContain('aws/acme-prod');
     expect(statSync(vault.file).mode & 0o077).toBe(0);
     expect(statSync(vault.keyFile).mode & 0o077).toBe(0);
     expect(vault.problems()).toEqual([]);
 
     // A reference is what everything else holds.
-    expect(vault.resolve(secretRef('aws/bg-prod'))).toBe('AKIA-not-a-real-key');
+    expect(vault.resolve(secretRef('aws/acme-prod'))).toBe('AKIA-not-a-real-key');
     expect(vault.resolve('plain text')).toBe('plain text');
     expect(() => vault.resolve('secret:nope')).toThrow('There’s no secret called "nope".'.replace('’', "'"));
 
-    expect(vault.remove('aws/bg-prod')).toBe(true);
-    expect(vault.remove('aws/bg-prod')).toBe(false);
+    expect(vault.remove('aws/acme-prod')).toBe(true);
+    expect(vault.remove('aws/acme-prod')).toBe(false);
     expect(vault.names()).toEqual([]);
   });
 

@@ -82,6 +82,27 @@ describe('credential guard', () => {
     }
   });
 
+  it('guards the copies of the vault an update makes: its backups, and the self-check’s copy', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'guard-'));
+    const saved = process.env.POLYPHEMUS_HOME;
+    const hh = join(dir, 'hh');
+    process.env.POLYPHEMUS_HOME = hh;
+    try {
+      for (const copy of [join(hh, 'backups', '2026-09-24-before-0.1.1'), join(hh, 'self-check', '123-456')]) {
+        mkdirSync(copy, { recursive: true });
+        writeFileSync(join(copy, 'vault.key'), 'k');
+        expect(credentialPathFor(join(copy, 'vault.key'), home)).toBeDefined();
+        expect(mightReachCredentials(`cat ${join(copy, 'vault.key')} ${join(copy, 'vault.json')}`, home)).toBe(true);
+      }
+      expect(mightReachCredentials(`ls ${join(hh, 'backups')}`, home)).toBe(true);
+      // The default home too, as the model would write it.
+      expect(mightReachCredentials('cat ~/.polyphemus/backups/x/vault.key', home)).toBe(true);
+    } finally {
+      if (saved === undefined) delete process.env.POLYPHEMUS_HOME;
+      else process.env.POLYPHEMUS_HOME = saved;
+    }
+  });
+
   it('makes the real tools refuse', async () => {
     const read = await readFile.run({ path: join(homedir(), '.codex/auth.json') }, { cwd: '/tmp' });
     expect(read).toMatchObject({ isError: true, content: expect.stringContaining('holds credentials') });

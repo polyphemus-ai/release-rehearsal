@@ -16,7 +16,8 @@ update that needs it: it was in place before the first release (2026-09-24).
    folder is removed and nothing else has changed.
 2. **It checks itself on a copy of your data.** The new version runs `poly self-check`: a copy of
    `sessions.db` (a consistent snapshot, safe while it's in use), `config.toml`, the vault and its key,
-   agents and routines, made inside `~/.polyphemus/cache/` and removed afterwards. It applies its own
+   agents and routines, made in `~/.polyphemus/self-check/` and removed afterwards (also when the check
+   is killed partway; one left by a check that died is swept by the next). It applies its own
    database changes to the copy, reads the config, decrypts a secret (never shown), and loads agents,
    routines, threads, projects and people. It starts nothing that acts: no turns, routines, runs or
    connections — a whole daemon started on a copy would send queued messages and resume runs for
@@ -25,7 +26,8 @@ update that needs it: it was in place before the first release (2026-09-24).
 3. **Nothing mid-work.** It waits for turns and workflow runs going (not those waiting on a person:
    a restart asks their gate again), up to an hour, or goes ahead with `--now`.
 4. **A backup.** `sessions.db`, `config.toml` and the vault, into `~/.polyphemus/backups/`, the last
-   three kept.
+   three kept. Backups and the self-check's copy hold the vault and its key, so the credential guard
+   covers both folders, as it does the vault itself.
 5. **The switch.** `current` moves to the new version in one step, and the service restarts onto it.
 6. **Watched.** The daemon has to answer within 90 seconds and still be answering five seconds later.
    If it doesn't, the service is stopped, the backup is put back, `current` moves back, and the service

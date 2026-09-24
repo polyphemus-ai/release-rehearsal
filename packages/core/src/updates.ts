@@ -28,6 +28,13 @@ export const publishedName = (): string => (bundled ? (JSON.parse(readFileSync(a
 
 export const currentVersion = (): string => (JSON.parse(readFileSync(assetPath('cli', 'package.json'), 'utf8')) as { version: string }).version;
 
+/**
+ * A whole version and nothing else: 1.2.3, or 1.2.3-beta.4. What a registry says is used as a folder
+ * name and printed, so a looser check let `99.0.0/../../x` through as a newer version, and an update
+ * then removed the folder it pointed at (security review, 2026-09-24).
+ */
+export const isVersion = (v: string): boolean => /^\d+\.\d+\.\d+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$/.test(v);
+
 /** -1, 0 or 1: semantic versions, where a prerelease comes before its release. */
 export function compareVersions(a: string, b: string): number {
   const parse = (v: string) => {
@@ -62,7 +69,7 @@ export function knownUpdate(home: string, opts: { current?: string; installedFro
  * `next`, or `latest` when a stable release has overtaken the last beta.
  */
 export function newestOn(channel: UpdateChannel, tags: Record<string, unknown>): string | undefined {
-  const valid = (v: unknown): v is string => typeof v === 'string' && /^\d+\.\d+\.\d+/.test(v);
+  const valid = (v: unknown): v is string => typeof v === 'string' && isVersion(v);
   const stable = valid(tags.latest) ? tags.latest : undefined;
   if (channel === 'stable') return stable;
   const beta = valid(tags.next) ? tags.next : undefined;

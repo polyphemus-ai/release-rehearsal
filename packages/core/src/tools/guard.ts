@@ -18,6 +18,10 @@ const CREDENTIAL_PATHS = [
   '.polyphemus/vault.key',
   '.polyphemus/daemon-token', // the terminal's key to the daemon: with it, anything could answer approvals
   '.polyphemus/github-apps',
+  // Copies of the vault and its key: an update's backups, and the copy a self-check works on
+  // (security review, 2026-09-24 — they were outside this list, and readable without asking).
+  '.polyphemus/backups',
+  '.polyphemus/self-check',
   '.ssh',
   '.aws/credentials',
   '.aws/sso/cache',
@@ -46,7 +50,7 @@ const CREDENTIAL_PATHS = [
 ];
 
 /** Polyphemus's own secrets, wherever POLYPHEMUS_HOME puts them. */
-const POLYPHEMUS_SECRETS = ['credentials.json', 'vault.json', 'vault.key', 'daemon-token', 'github-apps'];
+const POLYPHEMUS_SECRETS = ['credentials.json', 'vault.json', 'vault.key', 'daemon-token', 'github-apps', 'backups', 'self-check'];
 
 const credentialPaths = (home: string): string[] => {
   const polyphemusHome = process.env.POLYPHEMUS_HOME;

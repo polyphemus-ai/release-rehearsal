@@ -57,12 +57,13 @@ const pkg = {
   version: cli.version,
   description: 'A multi-provider agent harness: one agent loop over Claude, OpenAI and Grok — their APIs and their CLIs on your subscriptions — with projects, workflows, connections and a phone app.',
   license: 'Apache-2.0',
+  keywords: ['ai', 'ai-agents', 'agent-harness', 'llm', 'claude', 'openai', 'grok', 'mcp', 'self-hosted', 'cli'],
   homepage: 'https://polyphemus.ai',
   // Where it's built from: npm's trusted publishing ties a release's provenance to this repository.
   repository: { type: 'git', url: 'git+https://github.com/polyphemus-ai/release-rehearsal.git' },
   bugs: 'https://github.com/polyphemus-ai/release-rehearsal/issues',
   type: 'module',
-  // What you type is `poly`; the full name works too, and so do the names it had before.
+  // What you type is `poly`; the full name works too.
   bin: { poly: 'bin/polyphemus.mjs', polyphemus: 'bin/polyphemus.mjs' },
   engines: rootPkg.engines,
   files: ['bin', 'lib', 'core', 'daemon', 'README.md', 'LICENSE', 'NOTICE'],

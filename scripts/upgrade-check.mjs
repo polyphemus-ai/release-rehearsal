@@ -127,7 +127,7 @@ try {
   if (current() !== `versions/${B}` || version() !== B) fail(`after updating, current is ${current()} and poly says ${version()}`);
   if (!existsSync(join(prefix, 'versions', A))) fail(`${A} wasn’t kept for going back`);
   if (!readdirSync(join(home, 'backups')).some((d) => d.endsWith(`before-${B}`))) fail('no backup was made before updating');
-  if (readdirSync(join(home, 'cache')).some((d) => d.startsWith('self-check-'))) fail('the self-check left its copy of the data behind');
+  if (existsSync(join(home, 'self-check')) && readdirSync(join(home, 'self-check')).length) fail('the self-check left its copy of the data behind');
   kept(`after updating to ${B}`);
   ok(`${A} → ${B}: installed beside it, checked against a copy of the data, backed up, switched; data kept`);
 

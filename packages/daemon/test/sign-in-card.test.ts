@@ -16,5 +16,13 @@ describe('which sign-in answers which card', () => {
     expect(sameSite('sso.garmin.com', 'app.withings.com')).toBe(false);
     expect(sameSite('account.withings.com', '')).toBe(false);
     expect(sameSite('', '')).toBe(false);
+    // Names registered under a country's domain, sites on shared hosting, and IP addresses: two
+    // labels alone made each of these pairs the same site (security review, 2026-09-24).
+    expect(sameSite('mybank.co.uk', 'evil.co.uk')).toBe(false);
+    expect(sameSite('login.mybank.co.uk', 'www.mybank.co.uk')).toBe(true);
+    expect(sameSite('alice.github.io', 'mallory.github.io')).toBe(false);
+    expect(sameSite('alice.github.io', 'alice.github.io')).toBe(true);
+    expect(sameSite('127.0.0.1', '10.66.0.1')).toBe(false);
+    expect(sameSite('shop.example.com.au', 'evil.com.au')).toBe(false);
   });
 });

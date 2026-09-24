@@ -6,8 +6,8 @@ reports are the most important issues we get.
 ## Reporting a vulnerability
 
 Please **don't open a public issue.** Use GitHub's private vulnerability reporting on this repository
-(**Security → Report a vulnerability**). Include what an attacker can do, the steps to reproduce it,
-and the version (`polyphemus --version`).
+(**Security → Report a vulnerability**), or email security@polyphemus.ai. Include what an attacker
+can do, the steps to reproduce it, and the version (`poly --version`).
 
 You'll get an acknowledgement within a few days. Fixes ship as a patch release, credited to you unless
 you'd rather not be.

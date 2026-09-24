@@ -71,16 +71,16 @@ Left, in order:
    release" at 0.0.0 → 0.1.0; `scripts/export-public.mjs --commit` into `polyphemus-ai/polyphemus`, with
    its About; the trusted publisher on npm (the owner); approve and merge the Version packages pull
    request (the owner); `scripts/release-check.sh`; polyphemus.ai/install.sh and install.ps1 redirected
-   to the GitHub release (mail for the website's agents). Still to come after it: the desktop apps
-   and the other install doors from the install decision (6badb8b).
+   to the GitHub release. Still to come after it: the desktop apps and the other install doors from
+   the install decision (DESIGN.md, 2026-09-21).
 5. **Development moves to the public repository** (right after 0.1.0): the private copy is archived,
    not deleted (a bundle, or a private repository); clone the public one back to the same path, and
    run `node scripts/install-hooks.mjs`. What `scripts/private-files.mjs` keeps out (research, memory,
    the move-in notes, the original brand files) gets a private home of its own. Decide then: straight
    to `main`, or pull requests.
-6. **The website and docs move into this repository** (after 5; the website team's work, in
-   Polyphemus): the files without their history, in a folder of their own outside the pnpm
-   workspace; the Terraform stays private; the deploy repointed; polyphemus.ai/install.sh and
+6. **The website and docs move into this repository** (after 5): the files without their history, in
+   a folder of their own outside the pnpm workspace; its infrastructure settings stay private; the
+   deploy repointed; polyphemus.ai/install.sh and
    /install.ps1 redirected to the latest GitHub release; the old repository archived.
 
 ## Now, alongside publishing: who can do what, proven
@@ -129,7 +129,7 @@ Recommended order, to confirm with the owner:
   name and certificate, a sign-on app and a way in, once. Banked in [hosting.md](hosting.md) (2026-09-13).
 - Diagnostics you can read, onboarding from a fresh install to a finished task, and honest
   per-provider capability and data-destination labels.
-- A release test that opens an older install's data, and a state backup.
+- ~~A release test that opens an older install's data, and a state backup~~ built 2026-09-24 (`scripts/upgrade-check.mjs`, [upgrades.md](upgrades.md)).
 
 ## Later: it gets better at it
 

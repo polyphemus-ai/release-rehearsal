@@ -3,10 +3,10 @@ dist/
 *.log
 .env
 .env.*
-# Written by an OpenClaw pre-compact hook; not part of polyphemus.
+# Notes other tools write here; not part of Polyphemus.
 memory/
-# Codex's working folder, from a third-party assessment; not part of polyphemus.
+# Codex's working folder; not part of Polyphemus.
 .codex/
 
-# What an agent banked before the workspace moved: its own notes, full of this machine's paths.
+# Agents' own hand-off notes, which hold paths from the machine they ran on.
 HANDOFF-*.md

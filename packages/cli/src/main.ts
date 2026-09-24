@@ -1166,6 +1166,7 @@ function upgradeDeps(polyphemus: Polyphemus, place: Place, now: boolean) {
     service: manager,
     unhealthy: () => unhealthy(daemonPort()),
     waitForIdle: () => waitForIdle(now),
+    daemonOutsideService: () => !manager && daemonAnswering(),
     log: (line: string) => console.log(line),
   };
 }

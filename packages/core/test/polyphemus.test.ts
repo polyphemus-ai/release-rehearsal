@@ -98,7 +98,7 @@ describe('SessionRuntime', () => {
     const stored = polyphemus.store.messages(session.meta!.id);
     expect(stored.map((m) => m.role)).toEqual(['user', 'assistant']);
     expect(stored[0]?.content[0]).toMatchObject({ type: 'text', text: expect.stringContaining('<polyphemus_status>') });
-    expect(provider.requests[0]?.system).toContain('You are running inside polyphemus');
+    expect(provider.requests[0]?.system).toContain('You are running inside Polyphemus');
     // Each finished turn is kept, so the app can show how long it took and what it used.
     const [turn] = polyphemus.store.turns(session.meta!.id);
     expect(turn).toMatchObject({ endSeq: 2, provider: 'openai', stopReason: 'end_turn', usage: { inputTokens: 0, outputTokens: 0 } });

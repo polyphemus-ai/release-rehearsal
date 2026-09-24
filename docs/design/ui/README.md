@@ -5,6 +5,5 @@
 - [mockup-models-providers.html](mockup-models-providers.html) — Models & providers with the Providers rename and who's using what.
 - [mockup-first-pass.html](mockup-first-pass.html) — the first pass. Superseded where the brief says so; still the reference for thread shapes, starting something, a three-agent thread and the run view.
 - **[finding-your-way-brief.md](finding-your-way-brief.md)** — the next round (2026-09-13): finding threads across projects, staying in a project, the project page's tabs, Setup's icon. With [mockup-finding-your-way.html](mockup-finding-your-way.html): today with the problems marked, and one direction to react to. The answer: **[finding-your-way-decisions.md](finding-your-way-decisions.md)** (binding, like the settled brief) and [mockup-finding-your-way-response.html](mockup-finding-your-way-response.html).
-- [original-brief.md](original-brief.md) and [addendum.md](addendum.md) — what was asked.
 
 The mockups are illustrations. Where a mockup and the brief disagree, the brief wins.

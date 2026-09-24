@@ -26,7 +26,7 @@ with one conversation noun, not three:
 | A project's `#general` | A thread in a project that you keep rather than archive |
 | A task | A thread in a project, usually with one agent, that ends |
 
-**Why not channels.** The owner, on being shown both: "maybe I'm just confused again." They weren't —
+**Why not channels.** Shown both, it wasn't clear what separated them, and rightly so:
 the distinction was real but the vocabulary was doing the work of an attribute. What actually
 differs between a "channel" and a "group DM" is whether a project is set, because that's what
 decides the files, memory and credentials a conversation gets. Setting a project already says

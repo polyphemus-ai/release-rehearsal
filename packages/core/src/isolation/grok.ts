@@ -259,9 +259,10 @@ export async function* runGrokIsolated(command: string, req: AgentRunRequest, wo
  */
 export async function* runGrokAsked(command: string, req: AgentRunRequest): AsyncGenerator<PolyphemusEvent> {
   // No acceptEdits. That mode allows a file edit and rejects every other tool, then says you rejected it.
-  // A read-only thread still asks Grok to prompt; we answer. Otherwise Grok asks us when it needs a yes.
+  // Always `default` unless the thread runs without asking: left out, the mode came from the person's
+  // own Grok settings, which may never ask (security review, 2026-09-24). Grok asks us; we ask the person.
   const args = [
-    ...(req.readOnly && !req.autoApprove ? ['--permission-mode', 'default'] : []),
+    ...(!req.autoApprove ? ['--permission-mode', 'default'] : []),
     'agent',
     ...(req.autoApprove ? ['--always-approve'] : []),
     ...(req.model !== 'default' ? ['--model', req.model] : []),

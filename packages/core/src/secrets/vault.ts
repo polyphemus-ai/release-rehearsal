@@ -41,7 +41,7 @@ interface VaultFile {
 }
 
 export const SECRET_PREFIX = 'secret:';
-/** `provider/anthropic`, `aws/bg-prod`: lowercase words, separated by / . _ - */
+/** `provider/anthropic`, `aws/acme-prod`: lowercase words, separated by / . _ - */
 export const SECRET_NAME = /^[a-z0-9][a-z0-9._-]*(\/[a-z0-9][a-z0-9._-]*)*$/;
 
 export const isSecretRef = (text: string): boolean => text.startsWith(SECRET_PREFIX);
@@ -85,7 +85,7 @@ export class Vault {
     return this.decrypt(name, entry);
   }
 
-  /** `secret:aws/bg-prod` → its value. Anything else is returned as it is. */
+  /** `secret:aws/acme-prod` → its value. Anything else is returned as it is. */
   resolve(text: string, by = 'polyphemus'): string {
     if (!isSecretRef(text)) return text;
     const name = text.slice(SECRET_PREFIX.length);

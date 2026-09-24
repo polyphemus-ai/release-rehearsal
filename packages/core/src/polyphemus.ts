@@ -869,7 +869,7 @@ export class SessionRuntime {
       ? `the user's subscription through the ${CLI_NAMES[providerConfig.adapter] ?? this.model.provider} CLI, so usage counts against their plan rather than being billed per token`
       : `the ${this.model.provider} API with the user's own key, billed per token`;
     return [
-      `You are running inside polyphemus, a multi-provider agent polyphemus. Right now you are ${describeModel(this.model)}, on ${how}.`,
+      `You are running inside Polyphemus, a multi-provider agent harness. Right now you are ${describeModel(this.model)}, on ${how}.`,
       "How people change things in polyphemus: in the app, a thread's model is picked at the top of the thread, an agent's own model is set on its profile under Team, and providers and usage are under Setup, Models & providers; in the terminal, /model and /status. There are no other commands in a thread, and a person can't run one by typing it to you. If you don't know how polyphemus does something, say you don't know rather than guessing at a command or a menu.",
       'Each user message starts with a <polyphemus_status> line giving the current model and how much usage is left on each provider; use it to answer questions about models, logins, billing, or limits instead of investigating files.',
       'Earlier turns in this conversation may have come from other models.',

@@ -13,6 +13,7 @@ const grok = (dir: string) => {
     file,
     `#!/usr/bin/env node
 const readline = require('node:readline');
+if (process.env.GROK_ARGV) require('node:fs').writeFileSync(process.env.GROK_ARGV, JSON.stringify(process.argv.slice(2)));
 const send = (o) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', ...o }) + '\\n');
 let promptId;
 readline.createInterface({ input: process.stdin }).on('line', (line) => {
@@ -92,6 +93,22 @@ describe('Grok on this computer', () => {
     const req = { prompt: 'hello', model: 'default', cwd: home, autoApprove: false, connections, env: { ...process.env, GROK_SEEN: seen } } as AgentRunRequest;
     for await (const _ of runGrokAsked(command, req)) void _;
     expect(JSON.parse(await readFile(seen, 'utf8'))).toEqual([{ name: 'polyphemus_connections', command: '/usr/bin/node', args: ['/x/connections-mcp.mjs'], env: [{ name: 'POLYPHEMUS_GATEWAY', value: '/tmp/g.sock' }] }]);
+  });
+
+  it('always asks Grok to ask, unless the thread runs without asking', async () => {
+    // Left out, the mode came from the person's own Grok settings, which may never ask (2026-09-24).
+    home = await mkdtemp(join(tmpdir(), 'grok-ask-'));
+    const command = await grok(home);
+    const argv = join(home, 'argv.json');
+    for (const autoApprove of [false, true]) {
+      const req = { prompt: 'hello', model: 'default', cwd: home, autoApprove, env: { ...process.env, GROK_ARGV: argv } } as AgentRunRequest;
+      for await (const _ of runGrokAsked(command, req)) void _;
+      const args = JSON.parse(await readFile(argv, 'utf8')) as string[];
+      if (autoApprove) {
+        expect(args).toContain('--always-approve');
+        expect(args).not.toContain('--permission-mode');
+      } else expect(args.slice(0, 2)).toEqual(['--permission-mode', 'default']);
+    }
   });
 
   it('asks before a page, and runs it when you say yes', async () => {

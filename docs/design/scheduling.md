@@ -160,5 +160,5 @@ Durable scheduling: [Temporal schedules](https://docs.temporal.io/schedule),
 [GitHub webhook best practices](https://docs.github.com/en/webhooks/using-webhooks/best-practices-for-using-webhooks).
 [Letta sleep-time agents](https://docs.letta.com/guides/agents/architectures/sleeptime).
 OpenClaw: [heartbeat](https://docs.openclaw.ai/gateway/heartbeat),
-[cron](https://docs.openclaw.ai/automation/cron-jobs), and local incident notes from 2026-09-06
+[cron](https://docs.openclaw.ai/automation/cron-jobs), and incidents in an earlier setup on 2026-09-06
 and 2026-09-09.

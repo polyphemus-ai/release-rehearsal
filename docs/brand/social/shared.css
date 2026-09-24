@@ -1,0 +1,6 @@
+@font-face { font-family: 'Figtree'; src: url('../../../packages/daemon/web/fonts/figtree.woff2') format('woff2'); font-weight: 300 900; }
+@font-face { font-family: 'Bricolage Grotesque'; src: url('../../../packages/daemon/web/fonts/bricolage.woff2') format('woff2'); font-weight: 200 800; }
+:root { --accent: #FF4B1F; --ink: #1A1A18; --paper: #F2EFE8; --muted-dark: #B8B5AC; --muted-light: #5E5D57; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { overflow: hidden; }
+body { font-family: 'Figtree', sans-serif; -webkit-font-smoothing: antialiased; }

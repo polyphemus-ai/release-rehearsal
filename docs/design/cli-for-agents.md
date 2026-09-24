@@ -6,7 +6,7 @@ something wrong, Polyphemus refuses clearly and explains the fix, instead of bre
 
 ## Why this is a pillar
 
-Your agents repeatedly gave wrong commands and broke OpenClaw. Its config directory holds about
+Agents in an earlier OpenClaw setup repeatedly gave wrong commands and broke it. Its config directory held about
 18 `.bak`/`.clobbered`/`.pre-*` copies of `openclaw.json`. The uncomfortable part: **OpenClaw
 already had validated `config set/patch/validate` commands and a backup ring, and agents
 hand-edited the file anyway.** So:
@@ -44,9 +44,9 @@ Each command is declared once in TypeScript:
   idempotent: true, scopes: ['config:write'], examples: [...], since: '0.3' }
 ```
 
-The argument parser, `--help`, `help --json`, the MCP tools, `docs/cli.md`, and the agent skill
-file are all generated from the registry. **They can't drift apart**, because CI fails if a
-generated file is stale or a command has no examples.
+The usage text, `poly help`, `help --json`, `poly capabilities` and the MCP tools are all generated
+from the registry, so **they can't drift apart**. (A generated `docs/cli.md` and agent skill file,
+checked by CI, are the goal; they don't exist yet.)
 
 ### 2. Discovery
 

@@ -12,8 +12,8 @@ actually shipped. One list, named rather than numbered, so nothing is "phase 6" 
 ## What it's for
 
 **An open-source alternative to OpenClaw, with an experience like Grok Bot, that lets you use any
-provider or model: bring your own tokens.** The owner, 2026-09-12, to the independent assessment
-(`.codex/assessment.md`, not committed). It replaces "Polyphemus is where you work with your agents"
+provider or model: bring your own tokens.** Set 2026-09-12, after an independent assessment. It
+replaces "Polyphemus is where you work with your agents"
 (2026-09-11), which was right but narrower.
 
 What that pins down, all confirmed by the owner in the same conversation:

@@ -31,15 +31,35 @@ const day = (at: number | undefined) => (at ? `${new Date(at).getDate()} ${MONTH
 /** How long a sign-in started from a thread still returns there. Matches an OAuth state's own life. */
 const SIGN_IN_RETURN_MS = 10 * 60 * 1000;
 
+/** Domains under which unrelated people each get a site: two hosts there are only the same if equal. */
+const SHARED_HOSTS = new Set(['github.io', 'gitlab.io', 'vercel.app', 'netlify.app', 'pages.dev', 'workers.dev', 'herokuapp.com', 'appspot.com', 'web.app', 'firebaseapp.com', 'azurewebsites.net', 'cloudfront.net', 'amazonaws.com', 'blogspot.com', 'onrender.com', 'fly.dev', 'glitch.me', 'repl.co', 'ngrok.io', 'ngrok-free.app', 'trycloudflare.com', 'wordpress.com', 'substack.com', 'notion.site', 'myshopify.com']);
+/** Second levels under a country's domain that are a registry's, not a site's: co.uk, com.au. */
+const COUNTRY_SECOND = new Set(['co', 'com', 'org', 'net', 'gov', 'ac', 'edu', 'ltd', 'plc', 'ne', 'or', 'go', 'gob', 'nic']);
+
 /**
  * The same site, whatever host it ended on: a card asking for account.withings.com is answered by a
- * sign-in kept at app.withings.com, where the site sent the person (2026-09-22). Two labels, so
- * withings.com covers its subdomains and nothing wider.
+ * sign-in kept at app.withings.com, where the site sent the person (2026-09-22). The site is the name
+ * someone registered — withings.com, bbc.co.uk — and hosts under a shared domain (github.io) or an IP
+ * address only match exactly: two labels alone made mybank.co.uk the same site as evil.co.uk
+ * (security review, 2026-09-24). Without the full public suffix list this errs towards "different".
  */
 export function sameSite(a = '', b = ''): boolean {
   if (!a || !b) return false;
-  const base = (host: string) => host.toLowerCase().split('.').slice(-2).join('.');
-  return a.toLowerCase() === b.toLowerCase() || base(a) === base(b);
+  const x = a.toLowerCase();
+  const y = b.toLowerCase();
+  if (x === y) return true;
+  const site = (host: string): string | undefined => {
+    if (/^[\d.]+$/.test(host) || host.includes(':')) return undefined;
+    const labels = host.split('.');
+    if (labels.length < 2) return undefined;
+    const two = labels.slice(-2).join('.');
+    if (SHARED_HOSTS.has(two)) return undefined;
+    const tld = labels.at(-1)!;
+    if (tld.length === 2 && COUNTRY_SECOND.has(labels.at(-2)!)) return labels.length >= 3 ? labels.slice(-3).join('.') : undefined;
+    return two;
+  };
+  const sx = site(x);
+  return sx !== undefined && sx === site(y);
 }
 
 const UNKNOWN_CEILING = 'Unknown — polyphemus will hold itself to what you grant, but can’t confirm the key is limited.';
@@ -64,11 +84,15 @@ export function connectionRoutes(deps: ConnectionDeps) {
     return question;
   }
 
-  /** Any card still waiting for a sign-in to this site, whoever opened the view: keeping one answers it. */
-  function waitingForSite(access: Access, connectionId: string, site: string) {
+  /**
+   * Any card still waiting for a sign-in to this site, whoever opened the view: keeping one answers it —
+   * but only a card in a project the sign-in is already granted to (or in none).
+   */
+  function waitingForSite(access: Access, connectionId: string, site: string, granted: readonly string[]) {
     return polyphemus.store
       .openQuestions()
       .filter((q) => q.kind === 'signin' && q.detail.connection === connectionId && q.detail.how === 'browser' && sameSite(String(q.detail.site ?? ''), site))
+      .filter((q) => typeof q.detail.project !== 'string' || !q.detail.project || granted.includes(q.detail.project))
       .find((q) => {
         const meta = polyphemus.store.get(q.sessionId);
         return meta !== undefined && access.canWorkInSession(meta);
@@ -419,11 +443,15 @@ export function connectionRoutes(deps: ConnectionDeps) {
           const kept = await handsOn(() => connections.keepSignIn(live, person));
           const asked = typeof body.question === 'string' ? body.question : '';
           // The card that opened this view, or any other still waiting for this site: a sign-in kept
-          // any other way used to leave its card open with no way to clear it (2026-09-22).
-          const waiting = (asked ? waitingSignIn(access, asked, c.id, 'browser', kept.site) : undefined) ?? waitingForSite(access, c.id, kept.site);
-          if (waiting && typeof waiting.detail.project === 'string' && waiting.detail.project && !kept.projects.includes(waiting.detail.project)) {
+          // any other way used to leave its card open with no way to clear it (2026-09-22). Only the
+          // card the person started from grants the sign-in to its project; another card is answered
+          // only where the sign-in is already granted, or it would hand the person's session to a
+          // project an agent there asked for (security review, 2026-09-24).
+          const fromCard = asked ? waitingSignIn(access, asked, c.id, 'browser', kept.site) : undefined;
+          const waiting = fromCard ?? waitingForSite(access, c.id, kept.site, kept.projects);
+          if (fromCard && typeof fromCard.detail.project === 'string' && fromCard.detail.project && !kept.projects.includes(fromCard.detail.project)) {
             try {
-              connections.setSignInProjects(kept.id, [...kept.projects, waiting.detail.project]);
+              connections.setSignInProjects(kept.id, [...kept.projects, fromCard.detail.project]);
             } catch {
               // The browser isn't granted there. Keeping the sign-in still succeeded.
             }

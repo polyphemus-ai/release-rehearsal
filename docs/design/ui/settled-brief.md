@@ -1,8 +1,7 @@
 # Polyphemus UI: the settled brief
 
-One file. Supersedes `polyphemus-next-ui-prompt-additions.md` (first pass) and
-`polyphemus-next-ui-prompt-additions-2.md` (second pass) — everything in both is folded in here, and
-where they disagreed with each other or with the four settlements of 12 Sep, this file wins.
+One file. Supersedes two earlier rounds of additions to the brief — everything in both is folded in
+here, and where they disagreed with each other or with the four settlements of 12 Sep, this file wins.
 
 Paste it after the original brief and the addendum. These are decisions, not options. If one turns
 out to be wrong in code, stop and say so rather than substituting a different structure.

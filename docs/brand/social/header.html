@@ -1,0 +1,30 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="shared.css">
+<!--
+  X header, 1500×500. The avatar covers the bottom-left (about the first 330px, lower half) and
+  phones crop a little top and bottom, so the words sit in the middle band, right of the avatar.
+  The mark's own idea, drawn large: the stroke runs the width of the header, through one eye.
+-->
+<style>
+  body { width: 1500px; height: 500px; background: var(--ink); position: relative; }
+  svg { position: absolute; inset: 0; }
+  .words { position: absolute; left: 400px; top: 118px; width: 700px; }
+  h1 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 54px; line-height: 1.04; letter-spacing: -1.4px; color: var(--paper); }
+  p { margin-top: 70px; font-size: 27px; font-weight: 500; color: var(--muted-dark); letter-spacing: -0.2px; }
+  .url { position: absolute; right: 64px; bottom: 44px; font-size: 22px; font-weight: 600; color: var(--paper); letter-spacing: 0.2px; }
+  .url b { color: var(--accent); font-weight: 600; }
+</style>
+<body>
+  <svg width="1500" height="500" viewBox="0 0 1500 500">
+    <g fill="none" stroke="#FF4B1F" stroke-linecap="round">
+      <path d="M-20,262 H1068" stroke-width="10"/>
+      <circle cx="1210" cy="262" r="122" stroke-width="36"/>
+      <path d="M1352,262 H1540" stroke-width="10"/>
+    </g>
+    <circle cx="1210" cy="262" r="40" fill="#FF4B1F"/>
+  </svg>
+  <div class="words">
+    <h1>Run agents on the models<br>you already pay for.</h1>
+    <p>See what they did, not what they said.</p>
+  </div>
+  <div class="url">polyphemus<b>.ai</b></div>
+</body>

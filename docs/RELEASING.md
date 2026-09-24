@@ -18,8 +18,10 @@ one version, and are bundled into the published `polyphemus` by `scripts/build.m
 
 1. With a change someone using Polyphemus would notice, run `pnpm changeset`: pick patch, minor or
    major, and write the changelog line in plain words.
-2. Merge to `main`. CI runs on Linux and macOS: typecheck, tests, the app smoke check, and
-   `scripts/pack-check.mjs`, which installs the package as published into an empty folder and runs it.
+2. Merge to `main`. CI runs on Linux and macOS: typecheck, tests, the app smoke check,
+   `scripts/pack-check.mjs` (the package as published, installed into an empty folder and run),
+   `scripts/upgrade-check.mjs` (installed with install.sh, updated, a bad update refused, rolled back),
+   and the install script on clean Ubuntu, Debian and Fedora machines.
 3. The Release workflow keeps a **Version packages** pull request open with the next version and its
    changelog. CI on that pull request waits for someone to approve the run (the pull request's
    Checks, "Approve workflows to run"): GitHub holds runs on pull requests the Actions bot opens.
@@ -125,6 +127,8 @@ the trusted publisher first, as for the real package.
   Actions to create pull requests (Settings → Actions → General → Workflow permissions); under an
   organisation, the organisation's switch has to be on first, or the Release workflow fails at "GitHub
   Actions is not permitted to create or approve pull requests".
+- On GitHub, turn on private vulnerability reporting (Settings → Security → Private vulnerability
+  reporting): it's off on a new repository, and SECURITY.md sends reports there.
 - Commits in the public repository carry no `Co-Authored-By` lines naming an AI: GitHub lists every
   co-author as a contributor. The export's fresh commit has none; keep it that way for what follows.
 - The repository's About: `gh repo edit polyphemus-ai/polyphemus --description "One agent harness for

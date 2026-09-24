@@ -57,7 +57,7 @@ research agrees that conventions don't hold: CLAUDE.md-style rules against readi
 | Polyphemus's own master credential on a desktop | OS keychain via `@napi-rs/keyring` (keytar's replacement). This protects Polyphemus itself; it isn't a boundary between bots. |
 | Phone | Holds no agent secrets. The phone is the **approver** for elevated grants; its own login lives in `expo-secure-store`. |
 
-Everything else (config, memory, docs, prompts) holds only references: `secret:aws/bg-prod`.
+Everything else (config, memory, docs, prompts) holds only references: `secret:aws/acme-prod`.
 
 ### Broker
 
@@ -115,9 +115,9 @@ not. The shape:
 
 ```toml
 # ~/.polyphemus/secrets.toml (references and policy only)
-[secrets."aws/bg-prod"]
+[secrets."aws/acme-prod"]
 kind = "aws-role"                 # aws-role | github-app | api-key | env | file
-role = "arn:aws:iam::356468128759:role/bot-exec-bg"
+role = "arn:aws:iam::123456789012:role/bot-exec-acme"
 grants = [{ bot = "deployer", project = "game-night", expires = "2026-12-31" }]
 approval = "phone"                # production grants need a tap from you
 
@@ -175,8 +175,8 @@ new place: the boundary has to be enforced where the action happens, not where t
 ```toml
 # <repo>/.polyphemus/bindings.toml (safe to commit)
 [env.prod.aws]
-secret = "aws/bg-prod"
-account = "356468128759"          # asserted on every use
+secret = "aws/acme-prod"
+account = "123456789012"          # asserted on every use
 region = "us-east-1"
 
 [env.prod.github]
@@ -188,7 +188,7 @@ Before any AWS or GitHub action in a project, Polyphemus:
 
 1. resolves the binding;
 2. mints short-lived credentials;
-3. **preflights** the identity (`sts get-caller-identity` must return account 356468128759;
+3. **preflights** the identity (`sts get-caller-identity` must return account 123456789012;
    the GitHub App installation must see exactly the bound repo);
 4. refuses on any mismatch, with a clear message.
 
@@ -201,7 +201,7 @@ notes refer to the binding, so nothing else goes stale.
 
 1. Delete the static keys in `~/.aws/credentials` and the `[default]` profile.
 2. You sign in as a human through IAM Identity Center (`aws sso login`).
-3. In each account, create a role per bot and project (`bot-exec-bg`, …) that only your
+3. In each account, create a role per bot and project (`bot-exec-acme`, …) that only your
    Identity Center role (or a Roles Anywhere profile, for unattended runs) can assume.
 4. Polyphemus calls AssumeRole with `SourceIdentity=<bot>` and session tags, so CloudTrail
    shows which bot did what.

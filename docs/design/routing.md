@@ -209,8 +209,8 @@ the provider list and the model list are built from it.
 "default"` hands the choice to a vendor's CLI, so Polyphemus can't name the model up front — and it
 says what answered last, because every reply records its origin, so a `default` model reads
 "whichever it picks — last was claude-opus-5". But the CLIs all take a model id, and the screen
-read as though they didn't: The owner, "with all the CLIs in OC, I'm able to select the model I
-want." A named model can be pointed at any model its connection offers, `default` included, from
+read as though they didn't, though with OpenClaw (another agent harness) the same CLIs let you pick
+the model. A named model can be pointed at any model its connection offers, `default` included, from
 its own screen. What a connection offers comes from the connection: Claude Code and Grok report
 their own lists, and Codex's came back as just `["default"]` until it started reading
 `~/.codex/models_cache.json`, which is the account's real list and stays current on its own.

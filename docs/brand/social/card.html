@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8"><link rel="stylesheet" href="shared.css">
+<!-- A 16:9 card, 1200×675, for a pinned or launch post: X shows images this shape uncropped. -->
+<style>
+  body { width: 1200px; height: 675px; background: var(--paper); position: relative; }
+  .lockup { position: absolute; left: 88px; top: 88px; display: flex; align-items: center; gap: 22px; }
+  .lockup span { font-family: 'Bricolage Grotesque', sans-serif; font-size: 44px; font-weight: 600; letter-spacing: -1px; color: var(--ink); }
+  h1 { position: absolute; left: 88px; top: 250px; width: 1000px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600; font-size: 76px; line-height: 1.02; letter-spacing: -2.2px; color: var(--ink); }
+  .line { position: absolute; left: 88px; bottom: 150px; right: 88px; height: 8px; border-radius: 4px; background: var(--accent); }
+  p { position: absolute; left: 88px; bottom: 72px; font-size: 28px; font-weight: 500; color: var(--muted-light); }
+  .url { position: absolute; right: 88px; bottom: 72px; font-size: 28px; font-weight: 700; color: var(--ink); }
+</style>
+<body>
+  <div class="lockup">
+    <svg width="96" height="72" viewBox="0 0 96 72"><g fill="none" stroke="#FF4B1F" stroke-width="11" stroke-linecap="round"><circle cx="48" cy="36" r="24.5"/><path d="M6.5,36 H17.5"/><path d="M78.5,36 H89.5"/></g><circle cx="48" cy="36" r="8" fill="#FF4B1F"/></svg>
+    <span>Polyphemus</span>
+  </div>
+  <h1>Run agents on the models you already pay for.</h1>
+  <div class="line"></div>
+  <p>Claude, OpenAI and Grok · on your own computer · open source</p>
+  <div class="url">polyphemus.ai</div>
+</body>

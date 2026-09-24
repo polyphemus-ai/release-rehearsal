@@ -44,6 +44,9 @@ const SECRETS = [
 // and no denylist can list everyone's. Git's own protocol users (git@github.com) aren't people.
 const EMAIL = /[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+\.)+[A-Za-z]{2,}/g;
 const exampleEmail = (address) => /@(([a-z0-9-]+\.)*example\.(com|org|net)|github\.com|users\.noreply\.github\.com|anthropic\.com)$/i.test(address);
+// Addresses Polyphemus publishes on purpose, by name: where vulnerabilities are reported. Only these —
+// any other address at the domain is still refused.
+const PUBLISHED = new Set(['security@polyphemus.ai']);
 
 const denylistFile = process.env.POLYPHEMUS_LEAK_DENYLIST ?? join(homedir(), '.config', 'polyphemus-dev', 'leak-denylist.txt');
 const denied = existsSync(denylistFile)
@@ -78,7 +81,7 @@ for (const file of files) {
       }
     }
     for (const [address] of line.matchAll(EMAIL)) {
-      if (exampleEmail(address)) continue;
+      if (exampleEmail(address) || PUBLISHED.has(address.toLowerCase())) continue;
       hits += 1;
       console.log(`${relative(root, file)}:${i + 1}: an email address that isn’t an example one`);
     }

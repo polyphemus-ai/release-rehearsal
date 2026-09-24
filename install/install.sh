@@ -26,6 +26,9 @@ PREFIX="${POLYPHEMUS_PREFIX:-$HOME/.local/share/polyphemus}"
 BIN_DIR="${POLYPHEMUS_BIN_DIR:-$HOME/.local/bin}"
 
 say() { printf '%s\n' "$*"; }
+# A value in single quotes, for writing into a script: a folder name with a quote, $ or backtick in
+# it can't end the string or run anything (security review, 2026-09-24).
+q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 fail() { printf 'polyphemus install: %s\n' "$*" >&2; exit 1; }
 
 case "$CHANNEL" in
@@ -135,7 +138,7 @@ LAUNCHER="$PREFIX/current/lib/node_modules/$NAME/bin/polyphemus.mjs"
 for name in poly polyphemus; do
   cat > "$BIN_DIR/$name" <<EOF
 #!/bin/sh
-PATH="$NODE_BIN:\$PATH" exec "$NODE" "$LAUNCHER" "\$@"
+PATH=$(q "$NODE_BIN"):\$PATH exec $(q "$NODE") $(q "$LAUNCHER") "\$@"
 EOF
   chmod 755 "$BIN_DIR/$name"
 done
@@ -176,7 +179,7 @@ offer() { # name, command, where its installer puts it, what it's for, how to in
 TMP_LOG="$(mktemp)"
 offer "Claude Code" claude "$HOME/.local/bin/claude" "a Claude Pro or Max plan" "curl -fsSL https://claude.ai/install.sh | bash"
 # Said without the Node paths it needs to run, which are this install's own and would only be noise.
-offer "Codex" codex "$TOOLS/bin/codex" "a ChatGPT plan" "PATH=\"$NODE_BIN:\$PATH\" \"$NPM\" install -g --prefix \"$TOOLS\" --no-fund --no-audit --loglevel=error @openai/codex" "npm install -g @openai/codex, into $(echo "$TOOLS" | sed "s|^$HOME|~|")"
+offer "Codex" codex "$TOOLS/bin/codex" "a ChatGPT plan" "PATH=$(q "$NODE_BIN"):\$PATH $(q "$NPM") install -g --prefix $(q "$TOOLS") --no-fund --no-audit --loglevel=error @openai/codex" "npm install -g @openai/codex, into $(echo "$TOOLS" | sed "s|^$HOME|~|")"
 offer "Grok Build" grok "$HOME/.grok/bin/grok" "a SuperGrok plan" "curl -fsSL https://x.ai/cli/install.sh | bash"
 rm -f "$TMP_LOG"
 if [ -n "$LATER" ] && [ "$ASK" = no ] && [ "${POLYPHEMUS_CLIS:-}" != none ]; then printf "  To install one later:$LATER\n"; fi

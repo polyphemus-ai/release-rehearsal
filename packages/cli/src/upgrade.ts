@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { assetPath, compareVersions, currentVersion, loadAgents, loadRoutines, Polyphemus, PolyphemusError, publishedName } from '@polyphemus/core';
+import { assetPath, compareVersions, currentVersion, isVersion, loadAgents, loadRoutines, Polyphemus, PolyphemusError, publishedName } from '@polyphemus/core';
 import { dim, green, yellow } from './render.js';
 import type { ServiceManager } from './service-manager.js';
 
@@ -66,7 +66,20 @@ export interface CheckResult {
  * inside `home` (it holds the vault's key) and is removed afterwards.
  */
 export async function selfCheck(home: string): Promise<CheckResult[]> {
-  const copy = join(home, 'cache', `self-check-${process.pid}-${Date.now()}`);
+  // Its own folder, which the credential guard covers: the copy holds the vault and its key.
+  const copies = join(home, 'self-check');
+  mkdirSync(copies, { recursive: true, mode: 0o700 });
+  chmodSync(copies, 0o700);
+  // One left by a check that was killed (an update's timeout, a closed terminal) goes now.
+  for (const old of readdirSync(copies)) if (Date.now() - statSync(join(copies, old)).mtimeMs > 10 * 60_000) rmSync(join(copies, old), { recursive: true, force: true });
+  const copy = join(copies, `${process.pid}-${Date.now()}`);
+  // Stopped partway, it removes the copy first: `finally` doesn't run when a signal ends the process.
+  const cleanUp = () => {
+    rmSync(copy, { recursive: true, force: true });
+    process.exit(143);
+  };
+  process.once('SIGTERM', cleanUp);
+  process.once('SIGHUP', cleanUp);
   const results: CheckResult[] = [];
   const check = async (name: string, fn: () => unknown) => {
     try {
@@ -107,6 +120,8 @@ export async function selfCheck(home: string): Promise<CheckResult[]> {
       // the copy goes either way
     }
     rmSync(copy, { recursive: true, force: true });
+    process.off('SIGTERM', cleanUp);
+    process.off('SIGHUP', cleanUp);
   }
   return results;
 }
@@ -217,6 +232,8 @@ export interface UpgradeDeps {
   /** Waits for running turns and runs to finish; false if they didn't in time. */
   waitForIdle(): Promise<boolean>;
   log(line: string): void;
+  /** Whether a daemon is running that `service` can't stop (`poly serve` in a terminal). */
+  daemonOutsideService?(): boolean;
   /** Installs `spec` into an npm prefix; the default runs npm. */
   npmInstall?(prefix: string, spec: string): { ok: boolean; why?: string };
 }
@@ -256,6 +273,7 @@ function runStaged(launcher: string, args: string[], home: string): { status: nu
  */
 export async function upgrade(target: string, deps: UpgradeDeps): Promise<UpgradeResult> {
   const { home, place, log } = deps;
+  if (!isVersion(target)) return { ok: false, changed: false, why: `“${target.replace(/[^\x20-\x7e]/g, '?')}” isn’t a version, so nothing was changed.` };
   const install = deps.npmInstall ?? npmInstall;
   const from = currentVersion();
   const name = publishedName();
@@ -347,6 +365,12 @@ export async function rollback(deps: Omit<UpgradeDeps, 'waitForIdle'> & { waitFo
   const last = [...updateHistory(home)].reverse().find((entry) => entry.outcome === 'live');
   const now = currentVersion();
   if (!last || last.to !== now) return { ok: false, why: `There’s no update to ${now} on record to go back from.` };
+  if (!isVersion(last.from)) return { ok: false, why: 'The update record doesn’t name a version to go back to.' };
+  // Putting data back replaces the database: a daemon nothing here can stop would keep writing to
+  // the old one, and everything after would be lost (security review, 2026-09-24).
+  if (deps.restoreData && !deps.service && deps.daemonOutsideService?.()) {
+    return { ok: false, why: 'polyphemus is running in a terminal (poly serve). Stop it first, then run this again, so your data isn’t replaced under it.' };
+  }
   if (!(await deps.waitForIdle())) return { ok: false, why: 'Sessions were still working, so nothing was changed. Try again when they’ve finished, or with --now.' };
   const name = publishedName();
   if (place.kind === 'versions' && !existsSync(join(place.prefix, 'versions', last.from, '.polyphemus-ready')) && !existsSync(launcherIn(join(place.prefix, 'versions', last.from), name))) {

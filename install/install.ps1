@@ -5,8 +5,9 @@
     irm https://polyphemus.ai/install.ps1 | iex
 
   Run it in an ordinary PowerShell window. Windows asks for permission itself where a step needs it
-  (installing or updating WSL). With a polyphemus-*.tgz and install.sh beside this file, it installs
-  that build instead of the published one: that is how a build is tried before it's published.
+  (installing or updating WSL). With a polyphemus-*.tgz and install.sh beside this file, it asks
+  whether to install that build instead of the published one: that is how a build is tried before
+  it's published.
 
   Plain ASCII on purpose: Windows PowerShell reads a file without a byte-order mark as Windows-1252,
   and treats a curly apostrophe as a quote, which ends a string mid-word. And everything is inside
@@ -111,7 +112,9 @@ function Install-Polyphemus {
   Write-Host ''
   $package = Get-ChildItem -Path $PSScriptRoot -Filter 'polyphemus-*.tgz' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime | Select-Object -Last 1
   $script = Get-ChildItem -Path $PSScriptRoot -Filter 'install*.sh' -ErrorAction SilentlyContinue | Where-Object { Select-String -Path $_.FullName -Pattern 'Installs Polyphemus on macOS or Linux' -SimpleMatch -Quiet } | Sort-Object LastWriteTime | Select-Object -Last 1
-  if ($PSScriptRoot -and $package -and $script) {
+  # Asked, never assumed: a saved copy run from Downloads would otherwise install whatever
+  # polyphemus-*.tgz happened to be there (security review, 2026-09-24).
+  if ($PSScriptRoot -and $package -and $script -and (Ask "There's a build beside this script ($($package.Name)). Install it instead of the published Polyphemus?")) {
     # A build to try: copied to plain names in a folder of its own, so no Windows path, space or
     # quote has to survive the trip into Linux's shell.
     $kit = Join-Path $env:TEMP 'polyphemus-install'

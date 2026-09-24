@@ -115,6 +115,30 @@ describe('updating with the service running', () => {
     expect(calls.slice(-2)).toEqual(['stop', 'start']);
   });
 
+  it('won’t put data back under a daemon running in a terminal', async () => {
+    const { prefix, home } = setUp();
+    const deps = { home, place: { kind: 'versions' as const, prefix }, unhealthy: async () => undefined, waitForIdle: async () => true, log: () => {} };
+    await upgrade(target, deps);
+    const history = JSON.parse(readFileSync(join(home, 'updates.json'), 'utf8')) as Array<{ to: string }>;
+    history.at(-1)!.to = from;
+    writeFileSync(join(home, 'updates.json'), JSON.stringify(history));
+    writeFileSync(join(home, 'config.toml'), 'what = "since the update"\n');
+    const back = await rollback({ ...deps, restoreData: true, daemonOutsideService: () => true });
+    expect(back).toMatchObject({ ok: false, why: expect.stringContaining('Stop it first') });
+    expect(readFileSync(join(home, 'config.toml'), 'utf8')).toBe('what = "since the update"\n');
+    expect(currentOf(prefix)).toBe(target);
+  });
+
+  it('refuses a version that isn’t one before touching any folder', async () => {
+    const { prefix, home } = setUp();
+    const victim = join(prefix, 'victim');
+    mkdirSync(victim);
+    writeFileSync(join(victim, 'keep.txt'), 'x');
+    const result = await upgrade('99.0.0/../../victim', { home, place: { kind: 'versions', prefix }, unhealthy: async () => undefined, waitForIdle: async () => true, log: () => {}, npmInstall: () => ({ ok: false, why: 'not reached' }) });
+    expect(result).toMatchObject({ ok: false, changed: false });
+    expect(existsSync(join(victim, 'keep.txt'))).toBe(true);
+  });
+
   it('knows the installer’s layout from a plain npm install', () => {
     expect(installPlace('/home/alex/.local/share/polyphemus/versions/1.2.3/lib/node_modules/polyphemus/', 'polyphemus')).toEqual({ kind: 'versions', prefix: '/home/alex/.local/share/polyphemus' });
     expect(installPlace('/usr/local/lib/node_modules/polyphemus/', 'polyphemus')).toEqual({ kind: 'npm', prefix: '/usr/local' });

@@ -22,21 +22,12 @@ agents on this computer instead (setup, or `poly config set isolation.level host
 that means. On macOS: Docker Desktop, OrbStack or Colima. An agent's own computer (a desktop it can
 use, which you can watch and take over) also runs in a container, 2 GB each.
 
-On Linux, Codex runs every command inside a bubblewrap sandbox, which needs unprivileged user
-namespaces. Ubuntu 24.04 and later restrict those through AppArmor, and then every command Codex
-runs fails before it starts. Polyphemus checks for this and, when it's the case, says so on Codex's card
-in Models & providers with the fix: an AppArmor profile that allows namespaces for `bwrap` only, or
-turning `kernel.apparmor_restrict_unprivileged_userns` off. It's a system setting, so you make the
-change yourself; Polyphemus doesn't. To check by hand: `codex sandbox -- true` should exit without an error.
-If you'd rather not change the machine, you can turn Codex's sandbox off on its card in Models &
-providers: its commands then run with your full permissions, without asking.
-
 ```bash
 curl -fsSL https://polyphemus.ai/install.sh | sh   # installs Node too, if yours is missing or too old
 # or, with Node 22.13 or newer already: npm install -g polyphemus
-poly start               # runs it in the background and opens setup in your browser
-poly doctor              # what this computer has and lacks, and how to fix each gap
-poly pair                # pair your phone: a one-time code, or scan the QR
+poly start    # runs it in the background and opens setup in your browser
+poly doctor   # what this computer has and lacks, and how to fix each gap
+poly pair     # pair your phone: a one-time code, or scan the QR
 ```
 
 `poly start` is the whole first run: the daemon as a background service, this computer paired, and
@@ -44,7 +35,7 @@ the setup wizard open — where you pick models, name your agent, and choose whe
 Windows, run all of this inside WSL2; `poly start` opens Windows's own browser.
 
 The app is served by your own computer, on this machine and your [Tailscale](https://tailscale.com)
-network only — nothing goes through a poly server, because there isn't one.
+network only — nothing goes through a Polyphemus server, because there isn't one.
 
 `poly update` installs a newer version when there is one (an installed Polyphemus checks npm once a
 day; `updates.check = false` in `~/.polyphemus/config.toml` stops that). `poly update --channel beta`
@@ -52,16 +43,18 @@ follows beta releases too; `--channel stable` goes back.
 
 ## How safe is it
 
-- **Credentials never reach a model.** API keys, OAuth tokens and connection secrets live in a local
+- **Credentials are kept from models.** API keys, OAuth tokens and connection secrets live in a local
   vault; tool output is redacted; agents reach outside services through Polyphemus, which checks each
-  call against what you granted.
+  call against what you granted. At the Isolated levels the container is the boundary; on this
+  computer the guards reduce exposure but aren't one.
 - **Isolated by default.** An agent's commands and file changes run in a container with only its
   project's folder and memory: no home folder, no credentials, nothing that controls Polyphemus, and no
   network except hosts you grant. The vendor CLIs stay on your computer with their tools sent to the
   container. You choose the level: Isolated, Isolated with an open network, or On this computer
   (commands run as you; Polyphemus's guards keep credential files out of reach, but they aren't a
   boundary). See [docs/design/isolation.md](docs/design/isolation.md).
-- **Asks first.** Commands that change things ask first unless you choose YOLO.
+- **Asks first.** Commands that change things ask first unless you choose YOLO. (Codex doesn't ask:
+  it relies on its own sandbox, or on the worker when agents are isolated.)
 - **Workflows prove their work.** Status comes from exit codes, commits and service responses, not
   from what a model says. A workflow that ships code pushes and merges as GitHub identities of its
   own, reviewed by a model from another vendor, and merges only with your yes.
@@ -73,12 +66,12 @@ Found a vulnerability? See [SECURITY.md](SECURITY.md).
 ## From the terminal
 
 ```bash
-polyphemus                     # a session with your default agent
-poly models              # every model, and whether it's ready to use
-polyphemus -m codex            # pick per session: an alias, a provider name, or provider:model-id
-polyphemus -m claude-api       # pay-as-you-go API (ANTHROPIC_API_KEY or `poly login anthropic`)
-polyphemus -c                  # continue the latest session in this directory
-polyphemus -p "summarize README.md" -y   # one-shot, tools allowed
+poly                               # a session with your default agent
+poly models                        # every model, and whether it's ready to use
+poly -m codex                      # pick per session: an alias, a provider name, or provider:model-id
+poly -m claude-api                 # pay-as-you-go API (ANTHROPIC_API_KEY or `poly login anthropic`)
+poly -c                            # continue the latest session in this directory
+poly -p "summarize README.md" -y   # one-shot, tools allowed
 ```
 
 Subscriptions run through each vendor's own CLI (`claude`, `codex`, `grok`), so sign in there
@@ -94,9 +87,9 @@ uncomment.
 
 ```bash
 poly config set providers.ollama '{ adapter = "openai-chat", base_url = "http://127.0.0.1:11434/v1", auth = { type = "none" } }'
-poly models --all                      # ask every provider what it offers
-poly models add llama ollama:llama3.1  # give one a name
-polyphemus -m llama                          # use it
+poly models --all                       # ask every provider what it offers
+poly models add llama ollama:llama3.1   # give one a name
+poly -m llama                           # use it
 ```
 
 Named models are a config change like any other: checked before saving, kept in
@@ -124,11 +117,11 @@ are isolated), and the app says "Doesn't ask" for it rather than "Asks first".
 ## Threads
 
 ```bash
-poly sessions search flaky test       # titles and what was said, archived ones included
+poly sessions search flaky test   # titles and what was said, archived ones included
 poly sessions rename 3cdf "Login bug"
-poly sessions archive 3cdf            # off the lists; send it a message and it's back
+poly sessions archive 3cdf        # off the lists; send it a message and it's back
 poly sessions --archived
-poly sessions delete 3cdf             # for good
+poly sessions delete 3cdf         # for good
 ```
 
 In the app, a thread's **⋯** button does the same, Home has search and the archive, and a
@@ -142,8 +135,8 @@ instructions themselves are read on demand, so twenty skills cost a few hundred 
 
 ```bash
 poly skills new review-pr "reviewing a pull request before merge"   # in your library
-poly skills new deploy "shipping this project" --project            # in this project
-poly skills                                                          # what sessions here can use
+poly skills new deploy "shipping this project" --project   # in this project
+poly skills   # what sessions here can use
 ```
 
 Your library lives in `~/.polyphemus/skills/` and is available everywhere. A project's skills live
@@ -157,10 +150,10 @@ An agent is an expert for one kind of work, with its own model route, persona, i
 skills. It's a folder you can read, edit, diff, and commit — not a row in a database.
 
 ```bash
-poly agents templates                   # what comes with polyphemus
+poly agents templates                      # what comes with Polyphemus
 poly agents new reviewer --from reviewer   # make one yours, then edit it
-poly agents                             # who you have
-polyphemus -a reviewer                        # start a session with one
+poly agents                                # who you have
+poly -a reviewer                           # start a session with one
 ```
 
 Polyphemus ships a **Reviewer**, a **Researcher**, and a **Builder**, and the skills `review-pr`
@@ -208,21 +201,17 @@ terminal paste or drag an image's path into your message, or use `/image <path>`
 shrunk on the phone before they're sent. Every model sees them: the APIs and Claude Code
 directly, Codex through `--image`, and Grok by opening the saved file.
 
-While the daemon is running, `polyphemus` in the terminal runs its sessions there too, so a
+While the daemon is running, `poly` in the terminal runs its sessions there too, so a
 session you start at your desk is live on your phone (and the other way round), and either one
-can answer its approvals. `polyphemus --local` keeps a session in the terminal only.
-
-Run from a checkout of this repository, the service runs its own copy of Polyphemus, never the files
-you're editing: `poly service update` deploys your latest commit once its tests pass, waiting for
-running sessions first.
+can answer its approvals. `poly --local` keeps a session in the terminal only.
 
 ## Projects
 
 ```bash
 poly projects new "Side Quest" --about "A tiny arcade game"   # in ~/projects, or --from <git-url>
-poly projects add ~/code/existing                            # a folder you already have
-poly projects orient side-quest                              # an agent drafts AGENTS.md and notes
-poly projects review side-quest                              # keep or discard what it proposed
+poly projects add ~/code/existing   # a folder you already have
+poly projects orient side-quest     # an agent drafts AGENTS.md and notes
+poly projects review side-quest     # keep or discard what it proposed
 ```
 
 A project is a folder Polyphemus knows about. Its `AGENTS.md` (safe to commit) holds the rules;
@@ -234,12 +223,12 @@ projects. Agents propose rules and notes into an inbox; nothing changes until yo
 ## For agents and scripts
 
 ```bash
-poly capabilities            # start here: commands, models, projects, paths, as JSON
-poly help sessions show      # one command: usage, examples, whether it prints JSON
-poly sessions show <id>      # a session's conversation: messages, tool calls, results
-poly usage                   # each plan's usage, and whether it will last until it resets
+poly capabilities                             # start here: commands, models, projects, paths, as JSON
+poly help sessions show                       # one command: usage, examples, whether it prints JSON
+poly sessions show <id>                       # a session's conversation: messages, tool calls, results
+poly usage                                    # each plan's usage, and whether it will last until it resets
 poly config set routing.on_fallback continue --dry-run   # settings: validated, recorded, undoable
-claude mcp add polyphemus -- poly mcp serve                  # polyphemus's read-only commands as MCP tools
+claude mcp add polyphemus -- poly mcp serve   # Polyphemus's read-only commands as MCP tools
 ```
 
 Change settings with `poly config` rather than editing `config.toml` by hand: every change
@@ -254,6 +243,19 @@ automatically when stdout isn't a terminal (`POLYPHEMUS_OUTPUT=text` turns that 
 Config lives in `~/.polyphemus/config.toml` (created on first run). Sessions are in
 `~/.polyphemus/sessions.db`. Put personal instructions in `~/.polyphemus/AGENTS.md`, or project
 instructions in `./AGENTS.md`.
+
+## When something's wrong
+
+`poly doctor` checks this computer and says how to fix each gap it finds.
+
+On Linux, Codex runs every command inside a bubblewrap sandbox, which needs unprivileged user
+namespaces. Ubuntu 24.04 and later restrict those through AppArmor, and then every command Codex
+runs fails before it starts. Polyphemus checks for this and, when it's the case, says so on Codex's card
+in Models & providers with the fix: an AppArmor profile that allows namespaces for `bwrap` only, or
+turning `kernel.apparmor_restrict_unprivileged_userns` off. It's a system setting, so you make the
+change yourself; Polyphemus doesn't. To check by hand: `codex sandbox -- true` should exit without an error.
+If you'd rather not change the machine, you can turn Codex's sandbox off on its card in Models &
+providers: its commands then run with your full permissions, without asking.
 
 ## Contributing
 

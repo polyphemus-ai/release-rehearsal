@@ -7,8 +7,8 @@ steps, and small, focused pull requests.
 
 ```bash
 pnpm install
-pnpm polyphemus            # the CLI, straight from the TypeScript (no build step needed)
-pnpm poly serve      # the daemon and the app, in this terminal
+pnpm poly         # the CLI, straight from the TypeScript (no build step needed)
+pnpm poly serve   # the daemon and the app, in this terminal
 ```
 
 `poly service install` from a checkout runs the daemon from its own tested copy of your latest
@@ -21,8 +21,9 @@ Every change passes the same checks CI runs:
 ```bash
 pnpm typecheck
 pnpm test
-node scripts/smoke.mjs      # every screen of the app in a real browser (needs Chrome)
-node scripts/pack-check.mjs # installs the package as it would be published, and runs it
+node scripts/smoke.mjs         # every screen of the app in a real browser (needs Chrome)
+node scripts/pack-check.mjs    # installs the package as it would be published, and runs it
+node scripts/upgrade-check.mjs # installs it with install.sh, updates it, refuses a bad update, rolls back
 ```
 
 If someone using Polyphemus would notice the change, add a changeset: `pnpm changeset` (patch for a
