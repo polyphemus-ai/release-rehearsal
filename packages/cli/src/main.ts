@@ -1126,12 +1126,12 @@ async function updateCommand(polyphemus: Polyphemus, values: { check?: boolean; 
   // A global npm install is the shape updated in place: npm's own global folder, or the one the
   // installer (install/install.sh) chose, which is the same layout under another prefix.
   const here = assetPath('cli', '');
-  const prefix = /^(.*)[\\/]lib[\\/]node_modules[\\/]polyphemus[\\/]/.exec(here)?.[1];
+  const prefix = /^(.*)[\\/]lib[\\/]node_modules[\\/]polyphemus-rehearsal[\\/]/.exec(here)?.[1];
   if (!prefix) {
     return console.log(`polyphemus ${status.latest} is out. This copy wasn’t installed with npm install -g, so update it the way you installed it (for example: npm install polyphemus@latest).`);
   }
   console.log(dim(`Installing polyphemus ${status.latest}…`));
-  const installed = spawnSync('npm', ['install', '-g', '--prefix', prefix, `polyphemus@${status.latest}`], { stdio: 'inherit' });
+  const installed = spawnSync('npm', ['install', '-g', '--prefix', prefix, `polyphemus-rehearsal@${status.latest}`], { stdio: 'inherit' });
   if (installed.status !== 0) throw new PolyphemusError('npm couldn’t install it. If it needs permission, run the same with sudo, or set up npm to install globally without it.', 'FAILED', `npm install -g --prefix ${prefix} polyphemus@${status.latest}`);
   let active = false;
   try {

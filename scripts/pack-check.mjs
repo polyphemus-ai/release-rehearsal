@@ -51,7 +51,7 @@ try {
   if (served?.status !== 200) fail('the daemon didn’t serve the app');
   if (!page?.headers.get('content-security-policy')) fail('the daemon served the app without its security headers');
 
-  const pkg = join(dir, 'node_modules', 'polyphemus');
+  const pkg = join(dir, 'node_modules', 'polyphemus-rehearsal');
   for (const server of readdirSync(join(pkg, 'core', 'bin')).filter((f) => f.endsWith('-mcp.mjs'))) {
     const answer = execFileSync(process.execPath, [join(pkg, 'core', 'bin', server), 'reviewer'], { input: `${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} })}\n`, encoding: 'utf8', timeout: 5000 }).split('\n')[0];
     if (!JSON.parse(answer).result) fail(`${server} didn’t start`);

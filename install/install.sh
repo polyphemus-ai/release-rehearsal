@@ -101,12 +101,12 @@ NPM="$NODE_BIN/npm"
 [ -x "$NPM" ] || NPM="$(command -v npm || true)"
 [ -n "$NPM" ] || fail "found Node.js but not npm beside it."
 
-if [ -n "${POLYPHEMUS_PACKAGE:-}" ]; then WHAT="$POLYPHEMUS_PACKAGE"; else WHAT="polyphemus@${POLYPHEMUS_VERSION:-$TAG}"; fi
+if [ -n "${POLYPHEMUS_PACKAGE:-}" ]; then WHAT="$POLYPHEMUS_PACKAGE"; else WHAT="polyphemus-rehearsal@${POLYPHEMUS_VERSION:-$TAG}"; fi
 say "Installing $WHAT…"
 mkdir -p "$PREFIX" "$BIN_DIR"
 PATH="$NODE_BIN:$PATH" "$NPM" install --global --prefix "$PREFIX" --no-fund --no-audit --no-update-notifier --loglevel=error "$WHAT" || fail "npm couldn't install $WHAT."
 
-LAUNCHER="$PREFIX/lib/node_modules/polyphemus/bin/polyphemus.mjs"
+LAUNCHER="$PREFIX/lib/node_modules/polyphemus-rehearsal/bin/polyphemus.mjs"
 [ -f "$LAUNCHER" ] || fail "the package installed, but its launcher isn't at $LAUNCHER."
 # Small wrappers rather than npm's links: they run the Node this install chose, whatever else is on
 # PATH later, and `poly update` finds the same npm.

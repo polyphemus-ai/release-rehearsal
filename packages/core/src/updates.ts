@@ -76,7 +76,7 @@ export async function checkForUpdate(home: string, opts: { enabled: boolean; for
   const now = opts.now ?? Date.now();
   if (!opts.force && known.checkedAt && now - known.checkedAt < DAY) return known;
   try {
-    const res = await fetch(`${registry()}/-/package/polyphemus/dist-tags`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
+    const res = await fetch(`${registry()}/-/package/polyphemus-rehearsal/dist-tags`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
     if (!res.ok) return { ...known, why: `npm answered ${res.status}` };
     const latest = newestOn(known.channel, (await res.json()) as Record<string, unknown>);
     if (!latest) return { ...known, why: 'npm didn’t say a version' };
