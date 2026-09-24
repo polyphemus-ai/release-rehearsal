@@ -68,6 +68,16 @@ export class EgressProxy {
     throw new PolyphemusError('Polyphemus’s network proxy didn’t open a connection for this worker, so it wasn’t started with network.', 'FAILED');
   }
 
+  /**
+   * Waits for a new worker's forwarder to listen: the container runs before node inside it has started,
+   * and a first `curl` in that gap failed with "Couldn't connect to server" (seen in CI, 2026-09-23).
+   */
+  async forwarding(runtime: ContainerRuntime, worker: string): Promise<void> {
+    const check = `const net=require('node:net');const end=Date.now()+15000;(function t(){net.connect(${EGRESS_PORT},'127.0.0.1').on('connect',function(){this.destroy();process.exit(0)}).on('error',()=>Date.now()<end?setTimeout(t,100):process.exit(1))})()`;
+    const found = await runtimeRun(runtime, ['exec', worker, 'node', '-e', check], { timeoutMs: 30_000 });
+    if (found.code !== 0) throw new PolyphemusError('This worker’s connection to Polyphemus’s network proxy didn’t come up, so it wasn’t started with network.', 'FAILED');
+  }
+
   /** How a worker is started to use the proxy: its own socket folder, and where its tools find the proxy. */
   workerArgs(runtime: ContainerRuntime, worker: string): { args: string[]; command: string[] } {
     const url = `http://127.0.0.1:${EGRESS_PORT}`;

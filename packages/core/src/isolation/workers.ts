@@ -193,6 +193,7 @@ async function startWorker(runtime: ContainerRuntime, name: string, hash: string
     const created = await runtimeRun(runtime, args, { timeoutMs: 120_000 });
     if (created.code !== 0) throw new PolyphemusError(`Couldn’t start a worker with ${runtime.name}: ${created.stderr.trim().split('\n').at(-1)}`, 'FAILED');
     await runtimeRun(runtime, ['exec', name, 'mkdir', '-p', '/tmp/home'], { timeoutMs: 30_000 });
+    if (egress) await egress.forwarding(runtime, name);
   }
   return makeWorker(runtime, name, spec);
 }
