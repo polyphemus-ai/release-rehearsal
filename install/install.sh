@@ -48,8 +48,17 @@ case "$(uname -m)" in
   *) fail "no Node.js build for $(uname -m)." ;;
 esac
 
-command -v curl >/dev/null 2>&1 || fail "it needs curl."
-command -v awk >/dev/null 2>&1 || fail "it needs awk."
+# How to install a missing tool, in this system's own words.
+get() {
+  if command -v apt-get >/dev/null 2>&1; then echo "sudo apt-get install -y $*"
+  elif command -v dnf >/dev/null 2>&1; then echo "sudo dnf install -y $*"
+  elif command -v pacman >/dev/null 2>&1; then echo "sudo pacman -S $*"
+  elif command -v zypper >/dev/null 2>&1; then echo "sudo zypper install $*"
+  elif command -v brew >/dev/null 2>&1; then echo "brew install $*"
+  else echo "your package manager's install for: $*"; fi
+}
+command -v curl >/dev/null 2>&1 || fail "it needs curl, to download Node.js and Polyphemus. Install it ($(get curl ca-certificates)), then run this again."
+command -v awk >/dev/null 2>&1 || fail "it needs awk. Install it ($(get gawk)), then run this again."
 command -v git >/dev/null 2>&1 || say "Note: Polyphemus needs git for projects and workflows, and it isn't installed. Install it before you use them."
 
 # "22.13.0" is at least "22.13.0"? Compared as numbers, part by part.
@@ -70,7 +79,7 @@ fi
 
 if [ -z "$NODE" ]; then
   # The newest Node $NODE_MAJOR for this computer, checked against nodejs.org's published checksums.
-  command -v tar >/dev/null 2>&1 || fail "it needs tar to unpack Node.js."
+  command -v tar >/dev/null 2>&1 || fail "it needs tar to unpack Node.js. Install it ($(get tar)), then run this again."
   # nodejs.org builds against glibc. On musl (Alpine) they unpack and then won't run, which used to
   # read as "node: not found" and a failed npm install rather than as what it is.
   # Only when musl is positively there: an unknown system goes ahead, and the check after the
@@ -118,7 +127,7 @@ else
   say "Installing ${WHAT}…"
   STAGE="$PREFIX/versions/.incoming-$$"
   rm -rf "$STAGE"
-  PATH="$NODE_BIN:$PATH" "$NPM" install --global --prefix "$STAGE" --no-fund --no-audit --no-update-notifier --loglevel=error "$WHAT" || { rm -rf "$STAGE"; fail "npm couldn't install $WHAT."; }
+  PATH="$NODE_BIN:$PATH" "$NPM" install --global --prefix "$STAGE" --no-fund --no-audit --no-update-notifier --no-progress --loglevel=error "$WHAT" || { rm -rf "$STAGE"; fail "npm couldn't install $WHAT."; }
   NAME="$(ls "$STAGE/lib/node_modules" | head -n 1)"
   VERSION="$("$NODE" -p "require(process.argv[1]).version" "$STAGE/lib/node_modules/$NAME/package.json")" || { rm -rf "$STAGE"; fail "the package installed, but its version couldn't be read."; }
   if [ "$(readlink "$PREFIX/current" 2>/dev/null || true)" = "versions/$VERSION" ]; then
@@ -190,10 +199,11 @@ say "✓ Polyphemus ${VERSION:-} is installed: $BIN_DIR/poly"
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
   *) say "  $BIN_DIR isn't on your PATH yet. Add it to your shell's profile:"
-     say "    export PATH=\"$BIN_DIR:\$PATH\"" ;;
+     say "    export PATH=\"$BIN_DIR:\$PATH\""
+     say "  then open a new terminal. Or run it now by its full path: ${BIN_DIR}/poly start" ;;
 esac
 say ""
-say "Next, one command — it starts polyphemus in the background, pairs this computer, and opens the"
+say "Next, one command — it starts Polyphemus in the background, pairs this computer, and opens the"
 say "setup wizard in your browser, where you pick your models and name your agent:"
 say ""
 say "  poly start"

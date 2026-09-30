@@ -36,6 +36,7 @@ node scripts/phases.mjs <subject>     # one loop of an animation, held still at 
 pnpm build                            # the published package, into dist/polyphemus
 node scripts/pack-check.mjs           # install that package into an empty folder, and run it
 node scripts/upgrade-check.mjs        # install it with install.sh, update it, refuse a bad update, roll back
+node scripts/connections-check.mjs    # every OAuth service in the catalogue still lets polyphemus sign in (read-only)
 node scripts/leak-check.mjs           # nothing secret or private in the tracked files (bar scripts/private-files.mjs)
 pnpm changeset                        # record a user-visible change (patch / minor / major)
 pnpm poly                          # the CLI from source (tsx; no build needed)

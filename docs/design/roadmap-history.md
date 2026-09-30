@@ -380,7 +380,7 @@ The public-release bar, not a later phase:
 - Diagnostics you can read, onboarding from a fresh install to a finished task, and honest
   per-provider capability and data-destination labels.
 
-Detail: [secrets.md](secrets.md#multiplayer-whose-secret-whose-bot).
+Detail: [secrets.md](secrets.md#multiplayer-whose-secret-whose-bot-phase-8).
 
 ## Now: ready to publish
 

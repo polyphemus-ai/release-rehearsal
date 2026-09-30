@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { GITHUB_ROLES, appManifest, convertManifest, githubServer, githubWeb, installUrl, newAppUrl, type GitHubRole, CONNECTION_CATALOGUE, connectionCatalogueEntry, googleClient, googleServer, setGoogleClient, xClient, xServer, setXClient, plaidApp, savePlaidApp, setPlaidApp, startPlaidLink, startPlaidConsent, finishPlaidLink, plaidItemProducts, plaidAccounts, plaidRemoveItem, PLAID_ALSO, claimSimplefin, saveSimplefinAccess, simplefinAccess, ceilingTools, discoverOAuth, GrantRefused, oauthSecretName, type Connection, type Grant, type Polyphemus, type McpServerDefinition, type BrowserSignIn, TabError, TAB_KEYS } from '@polyphemus/core';
+import { GITHUB_ROLES, appManifest, convertManifest, githubServer, githubWeb, installUrl, newAppUrl, type GitHubRole, CONNECTION_CATALOGUE, connectionCatalogueEntry, googleClient, googleServer, setGoogleClient, xClient, xServer, setXClient, plaidApp, savePlaidApp, setPlaidApp, startPlaidLink, startPlaidConsent, finishPlaidLink, plaidItemProducts, plaidAccounts, plaidRemoveItem, PLAID_ALSO, claimSimplefin, saveSimplefinAccess, simplefinAccess, buildRegistryIndex, cachedRegistry, saveRegistry, searchRegistry, type RegistryIndex, ceilingTools, discoverOAuth, GrantRefused, oauthSecretName, type Connection, type Grant, type Polyphemus, type McpServerDefinition, type BrowserSignIn, TabError, TAB_KEYS } from '@polyphemus/core';
 import type { Access } from './access.js';
 import { HttpError } from './http-error.js';
 
@@ -63,6 +63,9 @@ export function sameSite(a = '', b = ''): boolean {
 }
 
 const UNKNOWN_CEILING = 'Unknown — polyphemus will hold itself to what you grant, but can’t confirm the key is limited.';
+
+/** The registry being read in the background, and how far it's got. */
+let registryBuild: { pages: number } | undefined;
 
 export function connectionRoutes(deps: ConnectionDeps) {
   const { polyphemus } = deps;
@@ -750,6 +753,27 @@ export function connectionRoutes(deps: ConnectionDeps) {
     }
 
     // Before connecting: does this address sign in with OAuth, and what's its MCP endpoint?
+    // The open MCP Registry, read in the background and kept a day: its servers, searched here, the
+    // ones the catalogue already has (by address) left to the catalogue.
+    if (get && parts[1] === 'connections' && parts[2] === 'registry' && parts.length === 3) {
+      if (!access.owner) throw new HttpError(403, 'Only the owner of this install can connect a service.');
+      const params = new URL(req.url ?? '/', 'http://polyphemus').searchParams;
+      let index: RegistryIndex | undefined = cachedRegistry(polyphemus.home, { fresh: true });
+      if (!index && !registryBuild) {
+        registryBuild = { pages: 0 };
+        void buildRegistryIndex((pages) => registryBuild && (registryBuild.pages = pages))
+          .then((built) => saveRegistry(polyphemus.home, built))
+          .catch((err: Error) => deps.log?.(`Couldn’t read the MCP Registry: ${err.message}`))
+          .finally(() => (registryBuild = undefined));
+      }
+      index ??= cachedRegistry(polyphemus.home);
+      const known = new Set(CONNECTION_CATALOGUE.map((e) => e.url && new URL(e.url).host).filter(Boolean));
+      const found = index ? searchRegistry(index, params.get('q') ?? '', (server) => known.has(new URL(server.url).host)) : [];
+      const limit = Math.min(Math.max(Number(params.get('limit')) || 60, 1), 200);
+      send(res, 200, { builtAt: index?.builtAt ?? null, building: registryBuild ? { pages: registryBuild.pages } : null, partial: index?.partial ?? null, total: index?.servers.length ?? 0, found: found.length, servers: found.slice(0, limit) });
+      return true;
+    }
+
     if (get && parts[1] === 'connections' && parts[2] === 'discover' && parts.length === 3) {
       if (!access.owner) throw new HttpError(403, 'Only the owner of this install can connect a service.');
       const address = new URL(req.url ?? '/', 'http://polyphemus').searchParams.get('url') ?? '';

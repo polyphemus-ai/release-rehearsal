@@ -31,6 +31,7 @@ import {
   formatUsage,
   Polyphemus,
   polyphemusHome,
+  loadConfig,
   PolyphemusError,
   offList,
   agentModel,
@@ -55,7 +56,7 @@ import { pick, readHidden } from './picker.js';
 import { bold, cyan, dim, green, oneLine, red, Renderer, yellow } from './render.js';
 import { service, unhealthy, waitForIdle } from './service.js';
 import { installPlace, rollback, sayResult, selfCheck, upgrade, type Place } from './upgrade.js';
-import { inWsl, serviceManager } from './service-manager.js';
+import { canRunService, inWsl, NO_SERVICE, serviceManager } from './service-manager.js';
 import { doctorCommand } from './doctor.js';
 import { COMMANDS as COMMAND_SPECS, findCommand, usageText } from './commands.js';
 import { errorEnvelope, exitCodeFor, iso, printJson, wantsJson } from './output.js';
@@ -67,6 +68,7 @@ import { mcpServe } from './mcp.js';
 import { imagePathArg, pickOutImages } from './attachments.js';
 import { secretsCommand } from './secrets-cmd.js';
 import { skillsCommand } from './skills-cmd.js';
+import { pluginsCommand } from './plugins-cmd.js';
 import { agentsCommand, resolveAgent } from './agents-cmd.js';
 
 const USAGE = usageText();
@@ -170,6 +172,8 @@ async function main(): Promise<void> {
       check: { type: 'boolean' },
       // poly rollback --restore
       restore: { type: 'boolean' },
+      // poly plugins remove --connections
+      connections: { type: 'boolean' },
       channel: { type: 'string' },
       max: { type: 'string' },
     },
@@ -187,6 +191,16 @@ async function main(): Promise<void> {
   if (positionals[0] === 'self-check') {
     jsonOutput = wantsJson(values.json);
     return selfCheckCommand();
+  }
+
+  // Also before this computer's data is opened: update and rollback are how a person recovers when
+  // it can't be — data a newer version changed stops this one opening it, and they used to stop
+  // there too (Codex review, 2026-09-24). They need only the home folder and the config.
+  if (positionals[0] === 'update' || positionals[0] === 'rollback') {
+    jsonOutput = (findCommand(positionals[0])?.json ?? false) && wantsJson(values.json);
+    const home = polyphemusHome();
+    if (positionals[0] === 'update') return updateCommand(home, values);
+    return rollbackCommand(home, { restore: values.restore === true, now: values.now === true });
   }
 
   const polyphemus = await Polyphemus.open();
@@ -214,6 +228,7 @@ async function main(): Promise<void> {
     return agentsCommand(polyphemus, rest, { project: values.project === true, model: values.model, from: values.from, mark: values.mark, blank: values.blank === true, title: values.title, description: values.description, fallback: values.fallback, persona: values.persona, instructions: values.instructions, dryRun: values['dry-run'] === true }, jsonOutput, cwd);
   }
   if (command === 'usage') return usageCommand(polyphemus);
+  if (command === 'plugins') return pluginsCommand(polyphemus, rest, { project: values.project === true, yes: values.yes === true, connections: values.connections === true, from: values.from }, jsonOutput, cwd);
   if (command === 'projects') return projectsCommand(polyphemus, rest, values, cwd);
   if (command === 'routine' || command === 'routines') return routineCommand(polyphemus, rest, values, daemonPort(), jsonOutput);
   if (command === 'serve') return serve(polyphemus, cwd);
@@ -224,8 +239,6 @@ async function main(): Promise<void> {
   if (command === 'people') return peopleCommand(polyphemus, rest);
   if (command === 'devices') return devices(polyphemus, rest);
   if (command === 'loop') return loopCommand(polyphemus, rest, values, cwd);
-  if (command === 'update') return updateCommand(polyphemus, values);
-  if (command === 'rollback') return rollbackCommand(polyphemus, { restore: values.restore === true, now: values.now === true });
   if (command === 'intake') return intakeCommand(polyphemus, rest, values, cwd);
   if (command) {
     const words = [...new Set(COMMAND_SPECS.map((c) => c.usage.split(' ')[1] ?? '').filter((w) => /^[a-z]/.test(w)))];
@@ -550,7 +563,8 @@ async function serve(polyphemus: Polyphemus, cwd: string): Promise<void> {
   const phone = phoneAt(tailscale);
   if (phone) console.log(`Phone: ${cyan(phone)} ${dim('(reachable only on your tailnet)')}`);
   else if (tailscale) console.log(yellow('Tailscale is on, on Windows, but its HTTPS address couldn’t be pointed here, so phones can’t reach polyphemus yet.'));
-  else console.log(yellow('Tailscale isn’t running yet, so only this computer can connect. polyphemus picks it up when it starts.'));
+  else if (envSetting('TAILSCALE') === 'off') console.log(dim('Tailscale is off for this daemon (POLYPHEMUS_TAILSCALE=off), so only this computer can connect.'));
+  else console.log(yellow('Tailscale isn’t running yet, so only this computer can connect. Polyphemus picks it up when it starts.'));
   const paired = polyphemus.store.listDevices().filter((d) => !d.revokedAt).length;
   console.log(dim(paired > 0 ? `${paired} paired device${paired === 1 ? '' : 's'}. Pair another: poly pair` : 'No devices paired yet. In another terminal: poly pair'));
   if (process.stdout.isTTY) console.log(dim('Ctrl+C to stop.'));
@@ -642,13 +656,15 @@ function answers(port: number): Promise<boolean> {
 async function startHere(polyphemus: Polyphemus, cwd: string): Promise<void> {
   const port = daemonPort();
   if (!(await answers(port))) {
-    console.log('Starting polyphemus in the background…');
+    // WSL without systemd has its own advice, from the service manager.
+    if (process.platform === 'linux' && !inWsl() && !canRunService()) throw new PolyphemusError(NO_SERVICE, 'USAGE', 'poly serve');
+    console.log('Starting Polyphemus in the background…');
     await service('install', cwd, port, {});
     for (let i = 0; i < 100 && !(await answers(port)); i++) await new Promise((r) => setTimeout(r, 100));
   }
   if (!(await answers(port))) throw new PolyphemusError(`polyphemus isn’t answering on port ${port}. Start it with \`poly serve\` and run this again.`, 'FAILED', 'poly service logs');
   const url = `http://127.0.0.1:${port}/pair?code=${polyphemus.store.createPairingCode()}`;
-  console.log(`${bold('Open polyphemus:')} ${url}`);
+  console.log(`${bold('Open Polyphemus:')} ${url}`);
   console.log(dim('This computer only, and the link works once. Add your phone later with: poly pair'));
   // Best effort: a machine with no desktop (a server over ssh) still has the address above.
   if (inWsl()) {
@@ -662,6 +678,9 @@ async function startHere(polyphemus: Polyphemus, cwd: string): Promise<void> {
     if (!opened) console.log(yellow('Couldn’t open Windows’s browser from here. Open the link above in it yourself.'));
   } else if (process.platform === 'darwin' || process.env.DISPLAY || process.env.WAYLAND_DISPLAY) {
     await openWith(process.platform === 'darwin' ? 'open' : 'xdg-open', [url]);
+  } else if (process.env.SSH_CONNECTION) {
+    // A server over ssh: the link is for this computer's own browser, which it hasn't got.
+    console.log(dim(`On the computer you're ssh-ing from: ssh -L ${port}:127.0.0.1:${port} <this server>, then open the link there. Or pair your phone over Tailscale: poly pair`));
   }
 }
 
@@ -689,7 +708,7 @@ async function pairDevice(polyphemus: Polyphemus, personRef?: string): Promise<v
   console.log(dim(`Or scan the QR code with your phone's camera. Either works once, for the next 10 minutes.\n`));
   console.log(await QRCode.toString(url, { type: 'terminal', small: true }));
   console.log(`${dim('Or open:')} ${url}`);
-  console.log(dim('Your phone needs Tailscale on, and the daemon must be running (poly serve).'));
+  console.log(dim('Your phone needs Tailscale on, and Polyphemus running (poly start, or poly serve).'));
   if (!tailscale) console.log(yellow(envSetting('TAILSCALE') === 'off' ? 'Tailscale is off for this install (POLYPHEMUS_TAILSCALE=off), so this link only works on this computer.' : 'Tailscale isn’t running here, so this link only works on this computer.'));
 }
 
@@ -908,7 +927,7 @@ async function chooseDefaultModel(polyphemus: Polyphemus, printMode: boolean): P
   console.log(`${bold('Welcome to polyphemus.')} Pick the model new sessions start with. Change it any time with /default, or per session with -m.`);
   const choices = await modelChoices(polyphemus.config, polyphemus.registry, polyphemus.credentials);
   const model = await pick('Default model', choiceItems(choices, new Map()), Math.max(0, choices.findIndex((c) => c.ready)));
-  if (!model) throw new PolyphemusError('No model picked. Run `polyphemus` again to choose, or pass -m <model>.');
+  if (!model) throw new PolyphemusError('No model picked. Run `poly` again to choose, or pass -m <model>.');
   polyphemus.rememberDefault(model);
   console.log(dim(`Saved ${describeModel(model)} as your default (${configFile(polyphemus.home)}).`));
   return model;
@@ -1116,19 +1135,22 @@ async function intakeCommand(polyphemus: Polyphemus, words: string[], values: { 
  * `poly update`: the newest polyphemus from npm, then the service restarted onto it. From a checkout
  * of the repository it says how to update that instead: git, then poly service update.
  */
-async function updateCommand(polyphemus: Polyphemus, values: { check?: boolean; channel?: string; now?: boolean }): Promise<void> {
-  let channel = polyphemus.config.updates.channel;
+async function updateCommand(home: string, values: { check?: boolean; channel?: string; now?: boolean }): Promise<void> {
+  let channel = loadConfig(home).updates.channel;
   if (values.channel !== undefined) {
     if (values.channel !== 'stable' && values.channel !== 'beta') throw new PolyphemusError('The channel is stable or beta.', 'USAGE', 'poly update --channel beta');
     // Kept like any other setting: a revision `poly config history` lists and `poly config undo` reverses.
+    // That needs the data open, which only switching channel does.
     if (values.channel !== channel) {
+      const polyphemus = await Polyphemus.open(home);
       const history = new ConfigHistory(polyphemus.home, polyphemus.store, callerName());
       const rev = history.apply(history.plan('updates.channel', values.channel).after, 'set updates.channel');
+      polyphemus.close();
       if (!jsonOutput) console.log(dim(`Following ${values.channel} releases now (revision ${rev}; undo: poly config undo).`));
     }
     channel = values.channel;
   }
-  const status = await checkForUpdate(polyphemus.home, { enabled: true, force: true, channel });
+  const status = await checkForUpdate(home, { enabled: true, force: true, channel });
   if (jsonOutput && values.check) return printJson(status);
   if (status.installedFrom === 'checkout') {
     return console.log(`polyphemus ${status.current}, run from a checkout of its repository. Update it with git, then: poly service update`);
@@ -1144,14 +1166,14 @@ async function updateCommand(polyphemus: Polyphemus, values: { check?: boolean; 
   if (!place) {
     return console.log(`polyphemus ${status.latest} is out. This copy wasn’t installed with the installer or npm install -g, so update it the way you installed it.`);
   }
-  const result = await upgrade(status.latest, upgradeDeps(polyphemus, place, values.now === true));
+  const result = await upgrade(status.latest, upgradeDeps(home, place, values.now === true));
   sayResult(result, (line) => console.log(line));
   if (!result.ok) process.exitCode = 1;
   else if (!serviceRunning() && daemonAnswering()) console.log(yellow('polyphemus is running in a terminal (poly serve): stop it and start it again to use the new version.'));
 }
 
 /** What an update or a rollback needs from this computer: the service, its health, and waiting for work. */
-function upgradeDeps(polyphemus: Polyphemus, place: Place, now: boolean) {
+function upgradeDeps(home: string, place: Place, now: boolean) {
   const manager = (() => {
     try {
       const m = serviceManager();
@@ -1161,7 +1183,7 @@ function upgradeDeps(polyphemus: Polyphemus, place: Place, now: boolean) {
     }
   })();
   return {
-    home: polyphemus.home,
+    home,
     place,
     service: manager,
     unhealthy: () => unhealthy(daemonPort()),
@@ -1190,10 +1212,10 @@ const daemonAnswering = (): boolean => {
 };
 
 /** `poly rollback`: back to the version before the last update. */
-async function rollbackCommand(polyphemus: Polyphemus, opts: { restore: boolean; now: boolean }): Promise<void> {
+async function rollbackCommand(home: string, opts: { restore: boolean; now: boolean }): Promise<void> {
   const place = installPlace();
   if (!place) throw new PolyphemusError('This copy runs from a checkout of the repository: go back with git, or poly service rollback for the service.', 'USAGE');
-  const result = await rollback({ ...upgradeDeps(polyphemus, place, opts.now), restoreData: opts.restore });
+  const result = await rollback({ ...upgradeDeps(home, place, opts.now), restoreData: opts.restore });
   console.log(result.ok ? green(`✓ ${result.why}`) : yellow(`✗ ${result.why}`));
   if (!result.ok) process.exitCode = 1;
 }

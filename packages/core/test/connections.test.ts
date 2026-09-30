@@ -91,6 +91,14 @@ describe('connections and grants', () => {
     expect(connection.ceiling).toEqual({ provenance: 'unknown' });
   });
 
+  it('doesn’t take another server’s word that a write only reads', async () => {
+    // Marked read-only, send_contacts would be pre-ticked in a grant and never asked about (2026-09-28).
+    const owner = polyphemus.store.installOwner().id;
+    const sneaky = await polyphemus.connections.add({ name: 'Sneaky', owner, server: { kind: 'stdio', command: process.execPath, args: [FIXTURE, 'contacts', 'mislabel'] }, secrets: { CONTACTS_TOKEN: 'good' }, createdBy: owner });
+    const tools = Object.fromEntries((await polyphemus.connections.test(sneaky.id)).tools.map((t) => [t.name, t.reads]));
+    expect(tools).toEqual({ read_contacts: true, write_contacts: false, delete_contacts: false, send_contacts: false });
+  });
+
   it('refuses a grant wider than what it narrows (journey 4)', async () => {
     const { project, owner } = await shopWithContacts();
     polyphemus.connections.grant({ connection: 'contacts', project: project.slug, tools: ['read_contacts'], by: owner });
@@ -311,6 +319,23 @@ describe('calls', () => {
       ['text', undefined],
       ['image', 'image/png'],
     ]);
+  });
+
+  it('keeps a file a service hands back as bytes, never as text for a model, and not past its limit', async () => {
+    const client = await connectMcp({ ...contacts(), env: { CONTACTS_TOKEN: 'good' } });
+    try {
+      const small = await client.callTool('read_contacts', { export: true });
+      // The file's bytes, by the name the server suggested (cleaned only where it's saved); a text
+      // resource stays as it was, and no base64 reaches the text.
+      expect(small.text).toBe('Here is the export\n[resource]');
+      expect(small.files).toEqual([{ name: '../export.csv', mimeType: 'text/csv', data: Buffer.from('name\nAlex\n') }]);
+      const big = await client.callTool('read_contacts', { export: true, huge: true });
+      expect(big.files).toHaveLength(1);
+      expect(big.text).toContain('[all.bin was more than 25 MB, so polyphemus didn’t keep it]');
+      expect(big.text.length).toBeLessThan(200);
+    } finally {
+      client.close();
+    }
   });
 
   it('hands Codex the gateway without putting its token on the command line', () => {

@@ -20,7 +20,19 @@ export interface McpCallResult {
   text: string;
   /** Pictures it returned, as base64, with their type. */
   images?: Array<{ mediaType: string; data: string }>;
+  /** Files it returned (an embedded resource's bytes), for the connection layer to save where the call came from. */
+  files?: McpFile[];
 }
+
+/** A file a server handed back: its bytes and what it says it's called. Never a path to write to. */
+export interface McpFile {
+  name: string;
+  mimeType: string;
+  data: Buffer;
+}
+
+/** The most one file from a server may be, however it's sent: the Google server's own limit, and a little room. */
+export const MAX_RESOURCE_BYTES = 25 * 1024 * 1024;
 
 export type McpServerDefinition =
   | {
@@ -145,13 +157,33 @@ abstract class JsonRpcClient implements McpClient {
 
   async callTool(name: string, args: Record<string, unknown>): Promise<McpCallResult> {
     const result = await this.request('tools/call', { name, arguments: args });
-    const content = (result.content as Array<{ type: string; text?: string; data?: string; mimeType?: string }> | undefined) ?? [];
-    const whole = content.filter((block) => block.type !== 'image').map((block) => (block.type === 'text' ? (block.text ?? '') : `[${block.type}]`)).join('\n');
+    const content = (result.content as Array<{ type: string; text?: string; data?: string; mimeType?: string; resource?: { uri?: string; name?: string; mimeType?: string; blob?: string; text?: string } }> | undefined) ?? [];
+    // An embedded resource with bytes is a file, kept as bytes to be saved where the call came from —
+    // never put in front of a model as base64 text. One that's too big is said so, not kept.
+    const files: McpFile[] = [];
+    const said: string[] = [];
+    for (const block of content) {
+      if (block.type !== 'resource' || typeof block.resource?.blob !== 'string') continue;
+      const name = String(block.resource.name ?? block.resource.uri?.split('/').pop() ?? 'download');
+      if (block.resource.blob.length > (MAX_RESOURCE_BYTES * 4) / 3 + 4) {
+        said.push(`[${name} was more than ${MAX_RESOURCE_BYTES / (1024 * 1024)} MB, so polyphemus didn’t keep it]`);
+        continue;
+      }
+      const data = Buffer.from(block.resource.blob, 'base64');
+      if (data.length > MAX_RESOURCE_BYTES) said.push(`[${name} was more than ${MAX_RESOURCE_BYTES / (1024 * 1024)} MB, so polyphemus didn’t keep it]`);
+      else files.push({ name, mimeType: String(block.resource.mimeType ?? 'application/octet-stream'), data });
+    }
+    const whole = [
+      ...content
+        .filter((block) => block.type !== 'image' && !(block.type === 'resource' && typeof block.resource?.blob === 'string'))
+        .map((block) => (block.type === 'text' ? (block.text ?? '') : `[${block.type}]`)),
+      ...said,
+    ].join('\n');
     // What comes back is the service's, not polyphemus's: kept to what a model could read anyway, so a
     // huge answer doesn't have to be held, masked and stored whole.
     const text = whole.length > MAX_RESULT_CHARS ? `${whole.slice(0, MAX_RESULT_CHARS)}\n[${name} returned ${Math.round(whole.length / 1024)} KB; polyphemus kept the first ${Math.round(MAX_RESULT_CHARS / 1024)} KB]` : whole;
     const images = content.filter((block) => block.type === 'image' && typeof block.data === 'string').map((block) => ({ mediaType: String(block.mimeType ?? 'image/png'), data: block.data! }));
-    return { isError: result.isError === true, text, ...(images.length && { images }) };
+    return { isError: result.isError === true, text, ...(images.length && { images }), ...(files.length && { files }) };
   }
 
   protected fail(error: { message?: string; code?: number } | undefined, method?: string): never {

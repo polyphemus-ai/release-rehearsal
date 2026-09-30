@@ -69,7 +69,28 @@ export interface Reach {
 
 const READ_NAME = /^(get|list|read|search|find|fetch|query|describe|show|view|lookup|count)[_\-A-Z]|^(get|list|read|search)$/i;
 
-export function readsOnly(tool: { name: string; annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean } }): boolean {
+/**
+ * Whether a tool only reads: a read is pre-ticked when granting and runs without asking. Polyphemus's
+ * own servers say what their code does. Anyone else's server is taken at its word only when its label
+ * and the tool's name agree — a server that marks `send_email` read-only would otherwise have it
+ * granted by default and never asked about (2026-09-28). A name alone can't make a write a read: a
+ * read-looking name marked destructive or not read-only stays a change.
+ */
+const READ_WORDS = new Set(['get', 'list', 'read', 'search', 'find', 'fetch', 'query', 'describe', 'show', 'view', 'lookup', 'count', 'download', 'check', 'wait', 'status', 'browse', 'preview', 'export']);
+const WRITE_WORDS = new Set(['create', 'update', 'delete', 'remove', 'send', 'post', 'put', 'patch', 'write', 'insert', 'move', 'duplicate', 'copy', 'convert', 'spawn', 'stop', 'start', 'run', 'execute', 'exec', 'add', 'set', 'archive', 'upload', 'merge', 'close', 'open', 'assign', 'invite', 'share', 'publish', 'edit', 'rename', 'cancel', 'approve', 'reject', 'submit', 'pay', 'transfer', 'restore', 'revoke', 'grant', 'comment', 'reply', 'schedule', 'trigger', 'deploy', 'push', 'commit', 'install', 'enable', 'disable', 'modify', 'replace', 'save', 'mark', 'label', 'tag', 'unarchive', 'trash', 'purge', 'reset', 'import', 'sync', 'refund', 'charge', 'book', 'order', 'buy', 'sell']);
+
+/** A name that says it reads, and nothing that says it changes: notion-search, get_issue, listPages. */
+export function namedLikeARead(name: string): boolean {
+  const words = name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  return words.some((w) => READ_WORDS.has(w)) && !words.some((w) => WRITE_WORDS.has(w));
+}
+
+export function readsOnly(tool: { name: string; annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean } }, opts: { trusted?: boolean } = { trusted: true }): boolean {
+  if (opts.trusted === false) return tool.annotations?.readOnlyHint !== false && !tool.annotations?.destructiveHint && namedLikeARead(tool.name);
   if (tool.annotations?.readOnlyHint !== undefined) return tool.annotations.readOnlyHint;
   if (tool.annotations?.destructiveHint) return false;
   return READ_NAME.test(tool.name);

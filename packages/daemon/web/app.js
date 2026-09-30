@@ -43,6 +43,7 @@ function fill(node, ...children) {
 const ICONS = {
   back: '<path d="M15 5l-7 7 7 7"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>',
   home: '<path d="M4 11 12 4l8 7v8.5a.5.5 0 0 1-.5.5H15v-6H9v6H4.5a.5.5 0 0 1-.5-.5z"/>',
   projects: '<rect x="3.5" y="4" width="17" height="6.5" rx="2"/><rect x="3.5" y="13.5" width="17" height="6.5" rx="2"/>',
@@ -601,14 +602,15 @@ function parseRoute() {
   if (first === 'models') return { name: 'models', tab: params.get('tab') === 'connections' ? 'providers' : (params.get('tab') ?? 'models') };
     if (first === 'add-provider') return { name: 'addProvider', provider: second ? decodeURIComponent(second) : '' };
   if (first === 'choose') return { name: 'choose', provider: second ? decodeURIComponent(second) : '' };
-  if (first === 'connections' && second === 'new') return { name: 'addConnection', entry: params.get('service') ?? '' };
+  if (first === 'connections' && second === 'new') return { name: 'addConnection', entry: params.get('service') ?? '', url: params.get('url') ?? '', title: params.get('name') ?? '', key: params.get('key') ?? '' };
   if (first === 'connections' && second && path.split('/').filter(Boolean)[2] === 'live') return { name: 'liveSignIn', id: decodeURIComponent(second), live: path.split('/').filter(Boolean)[3] ?? '', site: params.get('site') ?? '', question: params.get('question') ?? '' };
   if (first === 'connections' && second) return { name: 'connection', id: decodeURIComponent(second) };
-  if (first === 'connections') return { name: 'connections' };
+  if (first === 'connections') return { name: 'connections', tab: params.get('tab') ?? '' };
   if (first === 'a' && second && path.split('/').filter(Boolean)[2] === 'computer') return { name: 'computer', agent: decodeURIComponent(second) };
   if (first === 'a' && second) return { name: 'agent', agent: decodeURIComponent(second), edit: params.get('edit') === '1' };
   if (first === 'u' && second) return { name: 'person', person: decodeURIComponent(second) };
   if (first === 'skills') return second === 'browse' ? { name: 'skillsBrowse', to: params.get('to') ?? '' } : { name: 'skills' };
+  if (first === 'plugins') return { name: 'plugins', show: params.get('show') ?? '' };
   if (first === 'review' && second) return { name: 'review', slug: decodeURIComponent(second) };
   return { name: 'home' };
 }
@@ -646,7 +648,7 @@ const SIDEBAR_OF = {
   // A project opens beside Home, scoped to it — not in place of the list you were using.
   // A project opens beside its own list: its threads, and what's waiting on you there.
   project: () => ((listProject = view.slug), 'projectThreads'), newProject: 'projects', review: 'home',
-  agent: 'team', newAgent: 'team', person: 'team', skills: 'team', skillsBrowse: 'team', computer: null,
+  agent: 'team', newAgent: 'team', person: 'team', skills: 'team', skillsBrowse: 'team', plugins: 'team', computer: null,
   models: null, setup: null, model: null, choose: null, addProvider: null,
   connections: null, connection: null, addConnection: null, liveSignIn: null,
 };
@@ -682,7 +684,7 @@ function goBack() {
     : view.name === 'review' ? `#/p/${view.slug}`
     : view.name === 'threads' ? (view.project ? `#/p/${encodeURIComponent(view.project)}` : view.agent ? `#/a/${encodeURIComponent(view.agent)}` : '#/')
     : view.name === 'project' || view.name === 'newProject' ? '#/projects'
-    : view.name === 'agent' || view.name === 'newAgent' ? '#/team'
+    : view.name === 'agent' || view.name === 'newAgent' || view.name === 'plugins' ? '#/team'
     : view.name === 'choose' || view.name === 'model' ? '#/models'
     : view.name === 'addProvider' ? '#/models?tab=providers'
     : view.name === 'connection' || view.name === 'addConnection' ? '#/connections'
@@ -701,6 +703,12 @@ function show() {
   view = parseRoute();
   scopeOnArrival();
   if (view.name !== 'session') current = null;
+  // Kept while you're in setup or adding a provider from it; gone once you leave for anything else.
+  if (!SETUP_VIEWS.has(view.name)) {
+    wizardKept = null;
+    backToSetup = false;
+    keyEditor = null;
+  }
   streaming.clear();
   render();
   window.scrollTo({ top: 0 });
@@ -761,6 +769,7 @@ const SCREENS = {
   skills: () => skillsScreen(),
   computer: () => computerView(view.agent),
   skillsBrowse: () => skillsBrowseScreen(view.to),
+  plugins: () => pluginsScreen(),
   review: () => reviewScreen(view.slug),
   models: () => modelsHomeScreen(view.tab),
   setup: setupScreen,
@@ -770,7 +779,8 @@ const SCREENS = {
   connections: connectionsScreen,
   connection: () => connectionScreen(view.id),
   liveSignIn: () => liveSignInScreen(view.id, view.live, view.site, view.question),
-  addConnection: () => (view.entry === 'other' ? addConnectionScreen() : connectionCatalogueScreen(view.entry)),
+  // The old list of services is the directory's Discover tab now; a service or "other" still opens its own screen.
+  addConnection: () => (view.entry === 'other' ? addConnectionScreen() : view.entry ? connectionCatalogueScreen(view.entry) : location.replace('#/connections?tab=discover')),
 };
 
 function render() {
@@ -793,6 +803,9 @@ function render() {
   if (!wide()) {
     sidebarList = null;
     pane = '#content';
+    // What the wide layout drew beside the content goes: left, it sat unstyled above a phone-width
+    // screen until a reload (a stranger's first run, 2026-09-24).
+    for (const side of ['#rail', '#sidebar']) if ($(side)) fill($(side));
     return screens[view.name]();
   }
   fill($('#rail'), rail());
@@ -824,7 +837,7 @@ function nothingOpen(list) {
     );
   }
   const said = {
-    home: ['Pick a thread', 'Or start one with + — it opens here.'],
+    home: state.sessions.length ? ['Pick a thread', 'Or start one with + — it opens here.'] : ['No threads yet', 'Start one with + — it opens here.'],
     direct: ['Pick a conversation', 'Or say hello to an agent — it opens here.'],
     projects: ['Pick a project', 'Its threads, roster and setup open here.'],
     team: ['Pick an agent', 'What it is, who it is, and what it does here.'],
@@ -3028,7 +3041,10 @@ function teamScreen() {
       h('p', { class: 'hint', style: 'margin-top:0' }, 'Agents are experts you work with, each with its own instructions, skills, and model.'),
       (state.agents?.length ?? 0) > 3 ? filterStrip('team', 'Filter agents', { hidden: (state.agents?.length ?? 0) - teamRows().length }) : null,
       ...((state.people ?? []).some((p) => p.id !== state.me?.id) || isOwner() ? peopleSection() : []),
-      h('div', { class: 'list' }, h('button', { class: 'row chevroned', onclick: () => go('#/skills') }, h('span', { class: 'skill-tile' }, icon('spark')), h('span', { class: 'row-main' }, h('span', { class: 'row-top' }, h('b', {}, 'Skills')), h('span', { class: 'row-sub' }, h('span', { class: 'text' }, 'What your agents know how to do, and a library of hundreds more'))), icon('chev', 'ico mini'))),
+      h('div', { class: 'list' },
+        h('button', { class: 'row chevroned', onclick: () => go('#/skills') }, h('span', { class: 'skill-tile' }, icon('spark')), h('span', { class: 'row-main' }, h('span', { class: 'row-top' }, h('b', {}, 'Skills')), h('span', { class: 'row-sub' }, h('span', { class: 'text' }, 'What your agents know how to do, and a library of hundreds more'))), icon('chev', 'ico mini')),
+        isOwner() ? h('button', { class: 'row chevroned', onclick: () => go('#/plugins') }, h('span', { class: 'skill-tile' }, icon('plus')), h('span', { class: 'row-main' }, h('span', { class: 'row-top' }, h('b', {}, 'Plugins')), h('span', { class: 'row-sub' }, h('span', { class: 'text' }, 'Skills, agents and connections from Cursor’s and Claude Code’s plugins'))), icon('chev', 'ico mini')) : null,
+      ),
       ...(teamRows().length
         ? [
             sec('Agents', teamRows().length),
@@ -3935,6 +3951,7 @@ async function skillsScreen() {
   screen(
     bar(backButton(), title('Skills'), isOwner() ? [h('button', { class: 'btn small primary', onclick: () => go('#/skills/browse?to=library') }, 'Browse the library')] : []),
     [
+      extendSwitch('skills'),
       h('p', { class: 'hint', style: 'margin-top:0' }, 'A skill is instructions an agent opens when the work calls for it. Only each one’s name and one line are in every prompt, so a long list costs little.'),
       sec('Shared by every agent', installed.library.length || ''),
       installed.library.length ? h('div', { class: 'card' }, installed.library.map((k) => skillRow(k, 'library'))) : h('p', { class: 'empty' }, 'None yet.'),
@@ -4052,6 +4069,170 @@ async function skillsBrowseScreen(to) {
     { mainClass: 'plain' },
   );
   load();
+}
+
+// ── Plugins ──
+// Cursor's and Claude Code's plugins (docs/design/plugins.md): the owner's to browse and install.
+// What one would add is shown before anything is added, and a program it would run is said plainly.
+
+const count = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const pluginTargetWords = (t) => (!t || t.kind === 'library' ? 'your library' : projectOf(t.slug)?.name ?? t.slug);
+
+async function pluginsScreen() {
+  const search = h('input', { type: 'search', class: 'catalogue-search', placeholder: 'Search Cursor’s and Claude Code’s plugins', 'aria-label': 'Search plugins' });
+  const markets = h('div', { class: 'scope' });
+  const installedHolder = h('div', {});
+  const results = h('div', {});
+  let from = '';
+  let timer;
+  const drawInstalled = async () => {
+    let data;
+    try {
+      data = await api('/api/plugins');
+    } catch (err) {
+      return showError(err);
+    }
+    if (view.name !== 'plugins') return;
+    fill(markets,
+      h('button', { type: 'button', class: `chip ${from ? '' : 'on'}`, onclick: () => ((from = ''), drawInstalled(), load()) }, 'All'),
+      data.marketplaces.map((m) => h('button', { type: 'button', class: `chip ${from === m.id ? 'on' : ''}`, onclick: () => ((from = m.id), drawInstalled(), load()) }, m.name)));
+    const added = (pl) => [count(pl.skills.length, 'skill'), count(pl.agents.length, 'agent'), pl.connections.length ? count(pl.connections.length, 'connection') : '', pl.proposals.length ? `${count(pl.proposals.length, 'rule')} proposed` : ''].filter(Boolean).join(' · ');
+    fill(installedHolder, data.plugins.length ? [sec('Installed', data.plugins.length), h('div', { class: 'dir-grid' }, data.plugins.map((pl) =>
+      h('button', { class: 'dir-card', onclick: () => installedPluginSheet(pl, added(pl), drawInstalled) },
+        pluginTile(pl.displayName, pl.origin.id.split('/')[0]),
+        h('span', { class: 'dir-main' }, h('span', { class: 'dir-title' }, h('b', {}, pl.displayName), h('span', { class: 'tag' }, pluginTargetWords(pl.target))),
+          h('span', { class: 'dir-about' }, added(pl)),
+          h('span', { class: 'dir-by' }, `from ${pl.origin.id}`)),
+        h('span', { class: 'dir-add added', 'aria-hidden': 'true' }, icon('check', 'ico mini')),
+      )))] : null);
+  };
+  const load = async () => {
+    fill(results, h('p', { class: 'hint' }, 'Reading the marketplaces…'));
+    let data;
+    try {
+      data = await api(`/api/plugins/browse?q=${encodeURIComponent(search.value.trim())}&from=${encodeURIComponent(from)}`);
+    } catch (err) {
+      return showError(err);
+    }
+    if (view.name !== 'plugins') return;
+    fill(results,
+      sec('Available', data.plugins.length + data.more),
+      h('div', { class: 'dir-grid' }, data.plugins.map((e) =>
+        h('button', { class: 'dir-card', onclick: () => pluginSheet(e.id, drawInstalled) },
+          pluginTile(e.name, e.marketplace),
+          h('span', { class: 'dir-main' }, h('span', { class: 'dir-title' }, h('b', {}, e.name)), h('span', { class: 'dir-about' }, e.description), h('span', { class: 'dir-by' }, `from ${e.marketplaceName}’s marketplace`)),
+          h('span', { class: 'dir-add', 'aria-hidden': 'true' }, icon('plus', 'ico mini'))))),
+      data.more ? h('p', { class: 'hint' }, `${data.more} more — search to narrow it down.`) : null,
+      data.plugins.length ? null : h('p', { class: 'empty' }, 'Nothing matches that.'),
+      ...data.problems.map((pr) => h('p', { class: 'hint tight warnish' }, `Couldn’t read ${pr}`)),
+    );
+  };
+  search.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(load, 250);
+  });
+  screen(
+    bar(backButton(), title('Plugins')),
+    [extendSwitch('plugins'), h('p', { class: 'hint lead' }, 'Plugins made for Cursor and Claude Code: their skills, agents and connections, installed here. You see what one adds before it adds anything; hooks and commands are never run.'), installedHolder, search, markets, results],
+    { mainClass: 'plain' },
+  );
+  drawInstalled();
+  load();
+  // A link to one plugin opens its sheet.
+  if (view.show) pluginSheet(view.show, drawInstalled);
+}
+
+/** A plugin's tile: its initial, on its marketplace's colour. */
+const pluginTile = (name, marketplace) => logoTile({ name: name.replace(/^[^a-z0-9]+/i, '') || name, color: marketplace === 'cursor' ? '#26251e' : marketplace === 'claude' ? '#c15f3c' : '#6b7280' });
+
+/** What a plugin would add, where; its settings; and Install. */
+function pluginSheet(ref, done) {
+  const holder = h('div', {}, h('p', { class: 'hint' }, 'Fetching it…'));
+  const wrap = sheet(ref, [holder]);
+  let target = 'library';
+  const draw = async () => {
+    fill(holder, h('p', { class: 'hint' }, 'Fetching it…'));
+    let answer;
+    try {
+      answer = await api('/api/plugins/plan', { ref, target });
+    } catch (err) {
+      return fill(holder, h('p', { class: 'hint tight warnish', role: 'alert' }, err.message));
+    }
+    const { plan, origin } = answer;
+    const where = h('select', { 'aria-label': 'Install it for', onchange: (e) => ((target = e.target.value), draw()) },
+      h('option', { value: 'library', selected: target === 'library' }, 'Your library: every project'),
+      ...(state.projects ?? []).map((p) => h('option', { value: `project:${p.slug}`, selected: target === `project:${p.slug}` }, p.name)));
+    const list = (label, parts) => (parts.length ? [h('b', { class: 'plan-head' }, label), h('ul', { class: 'plan' }, parts.map((part) =>
+      h('li', { class: part.action === 'add' ? 'adds' : 'skips' }, part.action === 'add' ? `+ ${part.name}` : `– ${part.name}: not added, ${part.why}`, part.note ? h('small', {}, ` ${part.note}`) : null)))] : []);
+    const runs = plan.servers.filter((sv) => sv.action === 'add' && sv.runsCode);
+    const fields = plan.settings.map((st) => ({ st, input: h('input', { type: st.secret ? 'password' : 'text', autocomplete: 'off', spellcheck: 'false', 'aria-label': st.name, placeholder: st.required ? 'Needed' : 'Optional' }) }));
+    const install = h('button', { class: 'btn primary wide' }, `Install ${plan.plugin.displayName}`);
+    fill(holder,
+      h('p', {}, plan.plugin.description),
+      h('p', { class: 'hint tight' }, [plan.plugin.format === 'cursor' ? 'A Cursor plugin' : 'A Claude Code plugin', plan.plugin.version, plan.plugin.license ?? 'no licence given', `from ${origin.id}`].filter(Boolean).join(' · ')),
+      h('label', { class: 'field' }, h('span', {}, 'Install it for'), where),
+      ...list('Skills', plan.skills),
+      ...list('Agents', plan.agents),
+      ...list('Rules, proposed in the project’s Review', plan.rules),
+      ...(plan.servers.length ? [h('b', { class: 'plan-head' }, 'Connections, granted to nothing until you grant them'), h('ul', { class: 'plan' }, plan.servers.map((sv) =>
+        h('li', { class: sv.action === 'add' ? 'adds' : 'skips' }, sv.action === 'add' ? `+ ${sv.name}` : `– ${sv.name}: not added, ${sv.why}`,
+          h('small', {}, ` ${sv.what}${sv.signIn === 'oauth' ? ' · you sign in' : sv.signIn === 'key' ? ' · takes a key' : ''}`))))] : []),
+      runs.length ? h('p', { class: 'note bad' }, `${runs.length === 1 ? 'This runs a program' : 'These run programs'} on this computer, as you: ${runs.map((sv) => sv.what).join('; ')}`) : null,
+      plan.unused.length ? h('p', { class: 'hint tight' }, `Not used here, and never run: ${plan.unused.join(', ')}.`) : null,
+      ...plan.problems.map((pr) => h('p', { class: 'hint tight warnish' }, pr)),
+      ...fields.map(({ st, input }) => h('label', { class: 'field' }, h('span', {}, `${st.name}${st.description ? ` — ${st.description}` : ''}`), input, st.secret ? h('small', { class: 'hint' }, 'Kept in your vault, and never shown again.') : null)),
+      install,
+    );
+    install.addEventListener('click', async () => {
+      const settings = Object.fromEntries(fields.filter(({ input }) => input.value.trim()).map(({ st, input }) => [st.name, input.value.trim()]));
+      const missing = fields.filter(({ st, input }) => st.required && !input.value.trim());
+      if (missing.length) return toast(`${plan.plugin.displayName} needs ${missing.map(({ st }) => st.name).join(', ')}.`);
+      if (runs.length && !(await confirmSheet('Run a program on this computer?', [`Installing ${plan.plugin.displayName} adds ${runs.length === 1 ? 'a connection that runs' : 'connections that run'} ${runs.map((sv) => sv.what).join('; ')} — with your permissions, whenever it’s used.`], { yes: 'Install it', danger: true }))) return;
+      install.disabled = true;
+      install.textContent = 'Installing…';
+      try {
+        const out = await api('/api/plugins/install', { ref, target, settings });
+        wrap.remove();
+        const i = out.installed;
+        toast(`${plan.plugin.displayName} is installed for ${pluginTargetWords(i.target)}: ${count(i.skills.length, 'skill')}, ${count(i.agents.length, 'agent')}${i.connections.length ? `, ${count(i.connections.length, 'connection')} to grant under Connections` : ''}.`);
+        await refresh();
+        done?.();
+        if (out.authorize.length) go(`#/connections/${encodeURIComponent(out.authorize[0].connection)}`);
+      } catch (err) {
+        install.disabled = false;
+        install.textContent = `Install ${plan.plugin.displayName}`;
+        showError(err);
+      }
+    });
+  };
+  draw();
+}
+
+/** An installed plugin: what it added, from where, and Remove. */
+function installedPluginSheet(pl, added, done) {
+  const remove = h('button', { class: 'btn wide' }, `Remove ${pl.displayName}`);
+  const wrap = sheet(pl.displayName, [
+    h('p', {}, `Installed for ${pluginTargetWords(pl.target)} ${ago(pl.installedAt)} ago: ${added}.`),
+    h('p', { class: 'hint tight' }, [pl.version, pl.license, `from ${pl.origin.id}`, pl.origin.commit && pl.origin.commit !== 'local' ? `at ${pl.origin.commit.slice(0, 7)}` : ''].filter(Boolean).join(' · ')),
+    ...(pl.skills.length ? [h('b', { class: 'plan-head' }, 'Skills'), h('ul', { class: 'plan' }, pl.skills.map((sk) => h('li', {}, sk.name)))] : []),
+    ...(pl.agents.length ? [h('b', { class: 'plan-head' }, 'Agents'), h('ul', { class: 'plan' }, pl.agents.map((a) => h('li', {}, a.id)))] : []),
+    ...(pl.connections.length ? [h('b', { class: 'plan-head' }, 'Connections'), h('ul', { class: 'plan' }, pl.connections.map((c) => h('li', {}, h('a', { href: `#/connections/${encodeURIComponent(c)}` }, c))))] : []),
+    remove,
+  ]);
+  remove.addEventListener('click', () => (wrap.remove(), removePluginSheet(pl, done)));
+}
+
+async function removePluginSheet(pl, done) {
+  if (!(await confirmSheet(`Remove ${pl.displayName}?`, [`Its skills and agents go, unless someone has changed them since — those stay. Its rules still waiting in Review go too.`], { yes: 'Remove' }))) return;
+  const connections = pl.connections.length > 0 && (await confirmSheet(`Remove its connections too?`, [`${pl.connections.join(', ')} — and anything granted from them.`], { yes: 'Remove them', no: 'Keep them' }));
+  try {
+    const out = await api('/api/plugins/remove', { name: pl.name, target: pl.target.kind === 'library' ? 'library' : `project:${pl.target.slug}`, connections });
+    toast(`${pl.displayName} removed.${out.kept.length ? ` Kept: ${out.kept.join(', ')}.` : ''}`);
+    await refresh();
+    done?.();
+  } catch (err) {
+    showError(err);
+  }
 }
 
 /** One agent's settings: what it is, who it is, and what it does here — all editable from the phone. */
@@ -4425,6 +4606,45 @@ function connectionsRow() {
   );
 }
 
+/** Logos of the catalogue's services (scripts/brand-icons.mjs), fetched once. */
+let brandIcons;
+const loadBrandIcons = () => (brandIcons ??= fetch('/brand-icons.json').then((r) => (r.ok ? r.json() : {})).catch(() => ({})));
+
+/** A service's logo on a white tile, or its letter on its colour when there isn't one. */
+function logoTile(entry, size = 44) {
+  const tile = h('span', { class: 'logo-tile', 'aria-hidden': 'true' });
+  tile.style.setProperty('--size', `${size}px`);
+  const letter = () => fill(tile, serviceTile(entry, size));
+  loadBrandIcons().then((icons) => {
+    const icon = entry.id ? icons[entry.id] : undefined;
+    if (!icon) return letter();
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', Math.round(size * 0.56));
+    svg.setAttribute('height', Math.round(size * 0.56));
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', icon.path);
+    // A near-white mark on the white tile can't be seen: the ink colour instead.
+    path.setAttribute('fill', /^#(f{3}|f{6}|fefefe|fdfdfd)$/i.test(icon.hex) ? '#1a1a18' : icon.hex);
+    svg.append(path);
+    tile.classList.add('has-logo');
+    fill(tile, svg);
+  });
+  return tile;
+}
+
+/** Connections, Skills, Plugins: everything that extends polyphemus, a tap apart (Claude's Customize). */
+const extendSwitch = (current) =>
+  h('div', { class: 'segmented extend' }, [['connections', 'Connections', '#/connections'], ['skills', 'Skills', '#/skills'], ...(isOwner() ? [['plugins', 'Plugins', '#/plugins']] : [])].map(([id, label, href]) =>
+    h('button', { type: 'button', 'aria-pressed': String(id === current), onclick: () => id !== current && go(href) }, label)));
+
+/** Services people reach for first, shown before the categories. */
+const POPULAR = ['gmail', 'google-drive', 'github', 'notion', 'linear', 'figma', 'stripe', 'atlassian', 'asana', 'canva', 'hubspot', 'slack', 'trello', 'x'];
+
+/**
+ * Connections as a directory, the way the big assistants show theirs: yours, and ones to discover —
+ * polyphemus's own catalogue (checked, with logos) and the open MCP Registry — each a card with +.
+ */
 async function connectionsScreen() {
   let data;
   try {
@@ -4433,41 +4653,127 @@ async function connectionsScreen() {
     showError(err);
     return location.replace('#/you');
   }
-  const cards = data.connections.map((c) =>
-    h(
-      'button',
-      { class: 'provider conn-card', onclick: () => go(`#/connections/${encodeURIComponent(c.id)}`) },
-      h(
-        'div',
-        { class: 'provider-head' },
-        connectionMark(c),
-        h(
-          'div',
-          { class: 'row-main' },
-          h('span', { class: 'chip-line' }, h('b', {}, c.name), h('span', { class: `tag ${HEALTH[c.health][0]}` }, HEALTH[c.health][1])),
-          h(
-            'span',
-            { class: 'meta' },
-            [
-              `Owned by ${c.owner.you ? 'you' : c.owner.name}`,
-              `offers ${toolsSummary(c.tools)}`,
-              c.grants.length ? `granted to ${[...new Set(c.grants.map((g) => g.project ? g.projectName : g.agentTitle))].join(', ')}` : 'not granted anywhere yet',
-            ].join(' · '),
-          ),
-        ),
-      ),
-      c.health === 'failing' ? h('div', { class: 'method' }, h('div', { class: 'note bad' }, clip(c.error ?? 'It stopped working.', 200))) : null,
-    ),
+  const owner = data.canAdd;
+  let catalogue = [];
+  let extras = {};
+  if (owner) {
+    try {
+      const got = await api('/api/connections/catalogue');
+      catalogue = got.catalogue;
+      extras = got;
+    } catch (err) {
+      showError(err);
+    }
+  }
+  const entryFor = (c) => catalogue.find((e) => e.connected.includes(c.id));
+  let tab = view.tab === 'discover' || view.tab === 'yours' ? view.tab : data.connections.length || !owner ? 'yours' : 'discover';
+  const tabs = h('div', { class: 'segmented' });
+  const body = h('div', {});
+  const search = h('input', { type: 'search', class: 'catalogue-search', placeholder: 'Search connections', 'aria-label': 'Search connections' });
+
+  // Yours: what's connected, and how each is doing.
+  const yourCard = (c) => {
+    const entry = entryFor(c);
+    return h('button', { class: 'dir-card', onclick: () => go(`#/connections/${encodeURIComponent(c.id)}`) },
+      entry ? logoTile(entry) : connectionMark(c),
+      h('span', { class: 'dir-main' },
+        h('span', { class: 'dir-title' }, h('b', {}, c.name), h('span', { class: `tag ${HEALTH[c.health][0]}` }, HEALTH[c.health][1])),
+        h('span', { class: 'dir-about' }, c.grants.length ? `Granted to ${[...new Set(c.grants.map((g) => (g.project ? g.projectName : g.agentTitle)))].join(', ')}` : 'Not granted anywhere yet'),
+        h('span', { class: 'dir-by' }, `Owned by ${c.owner.you ? 'you' : c.owner.name} · offers ${toolsSummary(c.tools)}`)),
+      icon('chev', 'ico mini'));
+  };
+
+  // Discover: a catalogue service, and a registry server.
+  const needsSetup = (e) => (e.signIn === 'google' && !extras.google?.client) || (e.signIn === 'x' && !extras.x?.client) || (e.signIn === 'plaid' && !extras.plaid?.client && !extras.simplefin?.linked);
+  const catalogueCard = (e) => {
+    const added = e.connected.length > 0;
+    return h('div', { class: 'dir-card' },
+      logoTile(e),
+      h('span', { class: 'dir-main' },
+        h('span', { class: 'dir-title' }, h('b', {}, e.name), h('span', { class: 'checked', title: `Checked by Polyphemus, ${e.checked}` }, icon('check', 'ico mini'))),
+        h('span', { class: 'dir-about' }, e.about),
+        h('span', { class: 'dir-by' }, e.builtin ? 'Built into Polyphemus' : e.signIn === 'token' ? 'Takes a key' : needsSetup(e) ? 'Set up once' : e.signIn === 'oauth' ? 'You sign in' : 'Open')),
+      added
+        ? h('button', { class: 'dir-add added', title: `${e.name} is added`, 'aria-label': `${e.name} is added`, onclick: () => go(`#/connections/${encodeURIComponent(e.connected[0])}`) }, icon('check', 'ico mini'))
+        : h('button', { class: 'dir-add', title: `Add ${e.name}`, 'aria-label': `Add ${e.name}`, onclick: () => go(`#/connections/new?service=${e.id}`) }, icon('plus', 'ico mini')));
+  };
+  const registryCard = (r) => {
+    const key = r.keys.find((k) => k.required);
+    const add = () => go(`#/connections/new?service=other&url=${encodeURIComponent(r.url)}&name=${encodeURIComponent(r.title)}${key ? `&key=${encodeURIComponent(key.name)}` : ''}`);
+    return h('div', { class: 'dir-card' },
+      logoTile({ name: r.title, color: '#6b7280' }),
+      h('span', { class: 'dir-main' },
+        h('span', { class: 'dir-title' }, h('b', {}, r.title)),
+        h('span', { class: 'dir-about' }, r.description || r.name),
+        h('span', { class: 'dir-by' }, `by ${r.publisher}${key ? ' · takes a key' : ''}`)),
+      h('button', { class: 'dir-add', title: `Add ${r.title}`, 'aria-label': `Add ${r.title}`, onclick: add }, icon('plus', 'ico mini')));
+  };
+  const grid = (cards) => h('div', { class: 'dir-grid' }, cards);
+  const ORDER = ['Email & messages', 'Files', 'Docs & knowledge', 'Projects & tasks', 'Meetings & calendars', 'Design', 'Sales & support', 'Money', 'Websites & marketing', 'Data & analytics', 'Developer', 'Automation', 'Research & web', 'Travel & life'];
+  let registryTimer;
+  const registryHolder = h('div', {});
+  const drawRegistry = async (q) => {
+    let got;
+    try {
+      got = await api(`/api/connections/registry?q=${encodeURIComponent(q)}&limit=${q ? 60 : 12}`);
+    } catch (err) {
+      return fill(registryHolder, h('p', { class: 'hint tight warnish' }, `The MCP Registry couldn’t be read: ${err.message}`));
+    }
+    if (view.name !== 'connections' || tab !== 'discover' || search.value.trim() !== q) return;
+    if (!got.total) {
+      fill(registryHolder, sec('MCP Registry'), h('p', { class: 'hint' }, got.building ? `Reading the open MCP Registry${got.building.pages ? ` — ${got.building.pages * 100} servers so far` : ''}…` : 'The open MCP Registry couldn’t be read. Try again later.'));
+      if (got.building) setTimeout(() => view.name === 'connections' && tab === 'discover' && search.value.trim() === q && drawRegistry(q), 2000);
+      return;
+    }
+    fill(registryHolder,
+      sec(q ? 'From the MCP Registry' : `More in the MCP Registry`, got.found),
+      h('p', { class: 'hint tight' }, 'Published in the open, by whoever proved the domain in the name. Polyphemus hasn’t checked these: whether one signs in is found out when you add it.'),
+      got.servers.length ? grid(got.servers.map(registryCard)) : h('p', { class: 'empty' }, 'Nothing there matches that.'),
+      !q && got.found > got.servers.length ? h('p', { class: 'hint' }, `${got.found - got.servers.length} more — search to find one.`) : null,
+      got.partial ? h('p', { class: 'hint tight' }, `Read in part (${got.partial}).`) : null);
+  };
+  const other = h('button', { class: 'row chevroned', onclick: () => go('#/connections/new?service=other') }, serviceTile({ name: '+', color: '#6b7280' }), h('span', { class: 'row-main' }, h('span', { class: 'row-top' }, h('b', {}, 'Something else')), h('span', { class: 'row-sub' }, h('span', { class: 'text' }, 'Any MCP server: its address, or a command on this computer'))), icon('chev', 'ico mini'));
+
+  const draw = () => {
+    for (const b of tabs.children) b.setAttribute('aria-pressed', String(b.dataset.tab === tab));
+    search.hidden = tab !== 'discover';
+    if (tab === 'yours') {
+      return fill(body, data.connections.length ? grid(data.connections.map(yourCard)) : h('p', { class: 'empty' }, owner ? 'Nothing connected yet. Discover one: Gmail, GitHub, Notion and more.' : 'Nothing is connected to a project you’re in.'),
+        owner && !data.connections.length ? h('button', { class: 'btn primary wide', onclick: () => ((tab = 'discover'), draw()) }, 'Discover connections') : null);
+    }
+    const q = search.value.trim().toLowerCase();
+    const shown = catalogue.filter((e) => !q || `${e.name} ${e.about} ${e.category ?? ''}`.toLowerCase().includes(q));
+    const popular = q ? [] : POPULAR.map((id) => shown.find((e) => e.id === id)).filter(Boolean);
+    const groups = [...new Set([...ORDER, ...shown.map((e) => e.category ?? 'More')])].map((cat) => [cat, shown.filter((e) => (e.category ?? 'More') === cat && !popular.includes(e))]).filter(([, list]) => list.length);
+    fill(body,
+      popular.length ? [sec('Popular', popular.length), grid(popular.map(catalogueCard))] : null,
+      groups.map(([cat, list]) => [sec(cat, list.length), grid(list.map(catalogueCard))]),
+      q && !shown.length ? h('p', { class: 'hint' }, `Nothing in Polyphemus’s catalogue called “${search.value.trim()}”.`) : null,
+      registryHolder,
+      [sec('Not listed'), h('div', { class: 'list' }, other)]);
+    clearTimeout(registryTimer);
+    registryTimer = setTimeout(() => drawRegistry(search.value.trim()), q ? 250 : 0);
+  };
+  tabs.append(
+    h('button', { type: 'button', 'data-tab': 'yours', onclick: () => ((tab = 'yours'), draw()) }, `Yours${data.connections.length ? ` ${data.connections.length}` : ''}`),
+    ...(owner ? [h('button', { type: 'button', 'data-tab': 'discover', onclick: () => ((tab = 'discover'), draw()) }, 'Discover')] : []),
   );
+  search.addEventListener('input', draw);
+  // What's added, at a glance: the first few logos, stacked.
+  const added = catalogue.filter((e) => e.connected.length).slice(0, 5);
+  const stack = added.length ? h('button', { class: 'logo-stack', onclick: () => ((tab = 'yours'), draw()), title: 'Your connections' }, added.map((e) => logoTile(e, 26)), h('span', {}, `${data.connections.length} added`)) : null;
   screen(
-    bar(backButton(), title('Connections'), data.canAdd ? [round('plus', 'Connect a service', () => go('#/connections/new'))] : []),
+    bar(backButton(), title('Connections'), owner ? [h('button', { class: 'btn small primary', onclick: () => go('#/connections/new?service=other') }, 'Add by address')] : []),
     [
-      h('p', { class: 'hint lead' }, 'Accounts at outside services, reached through their MCP servers. Polyphemus makes every call itself, checks it against what was granted, and keeps a record of which work it was for.'),
-      cards.length ? cards : h('p', { class: 'empty' }, data.canAdd ? 'Nothing connected yet.' : 'Nothing is connected to a project you’re in.'),
-      data.canAdd && !cards.length ? h('button', { class: 'btn primary wide', onclick: () => go('#/connections/new') }, 'Connect a service') : null,
+      extendSwitch('connections'),
+      h('p', { class: 'hint lead' }, 'Services your agents can use, reached through their MCP servers. Nothing can use one until you grant it to a project, and Polyphemus checks and records every call.'),
+      h('div', { class: 'dir-head' }, tabs, stack),
+      search,
+      body,
     ],
     { mainClass: 'plain' },
   );
+  draw();
 }
 
 /** A service's tile: its brand colour and initial, until there are logos. */
@@ -4918,10 +5224,14 @@ function addConnectionScreen() {
   const url = h('input', { id: 'conn-url', placeholder: 'https://app.example.com', autocapitalize: 'none', spellcheck: 'false', autocomplete: 'off', inputmode: 'url' });
   const found = h('small', { class: 'hint' }, 'Its address, or just the site: polyphemus looks for how it signs in.');
   const token = h('input', { id: 'conn-token', type: 'password', placeholder: 'Paste the key or token', autocomplete: 'off', spellcheck: 'false' });
+  // From a registry card: its address, name, and the header its key goes in, filled in.
+  if (view.url) url.value = view.url;
+  if (view.title) name.value = view.title;
+  const keyHeader = /^[A-Za-z0-9-]{1,64}$/.test(view.key ?? '') && !/^authorization$/i.test(view.key) ? view.key : '';
 
   // Remote: how it signs in. Detected from the address when the service says; otherwise your choice.
   const ways = h('div', { class: 'segmented' });
-  const tokenField = h('label', { class: 'field', hidden: true }, h('span', {}, 'API key or token'), token, h('small', { class: 'hint' }, 'Sent to the server as a bearer token. Goes to your vault; polyphemus never shows it again.'));
+  const tokenField = h('label', { class: 'field', hidden: true }, h('span', {}, keyHeader ? `Its key (sent as ${keyHeader})` : 'API key or token'), token, h('small', { class: 'hint' }, `${keyHeader ? `Sent to the server in its ${keyHeader} header` : 'Sent to the server as a bearer token'}. Goes to your vault; polyphemus never shows it again.`));
   const oauthNote = h('p', { class: 'hint' }, 'You’ll sign in at the service next, and come straight back here. Polyphemus keeps the tokens in your vault and refreshes them itself.');
   const pickWay = (next) => {
     signIn = next;
@@ -4961,6 +5271,8 @@ function addConnectionScreen() {
   };
   url.addEventListener('blur', check);
   url.addEventListener('keydown', (e) => e.key === 'Enter' && check());
+  // Filled in from the registry: look now, and when it named a key, that's how it signs in.
+  if (view.url) check().then(() => keyHeader && pickWay('token'));
 
   const remote = h('div', {}, h('label', { class: 'field' }, h('span', {}, 'Where it is'), url, found), h('div', { class: 'field' }, h('span', {}, 'How it signs in'), ways), tokenField, oauthNote);
 
@@ -5007,7 +5319,7 @@ function addConnectionScreen() {
       if (signIn === 'oauth') body.auth = 'oauth';
       if (signIn === 'token') {
         if (!token.value) return token.focus();
-        body.secrets = { TOKEN: token.value };
+        body.secrets = keyHeader ? { [keyHeader]: token.value } : { TOKEN: token.value };
       }
     } else {
       const [cmd, ...args] = command.value.trim().split(/\s+/);
@@ -6006,14 +6318,30 @@ async function addProviderScreen(open) {
 }
 
 function catalogueRow(e) {
+  // From setup, a key provider Polyphemus already knows goes straight to its key box, rather than
+  // to every provider and way in (Codex's first-hour review, 2026-09-24). Nothing is stored or tested
+  // until the key is pasted and saved.
+  const open = async () => {
+    if (!e.configured) return go(`#/add-provider/${encodeURIComponent(e.id)}`);
+    if (backToSetup && e.connect === 'key') {
+      try {
+        if (e.offered) await api(`/api/providers/${encodeURIComponent(e.id)}/accept`, {});
+        await refresh();
+        keyEditor = { id: e.id };
+      } catch (err) {
+        return showError(err);
+      }
+    }
+    go('#/models?tab=providers');
+  };
   return h(
     'button',
-    { class: 'row', onclick: () => (e.configured ? go('#/models?tab=providers') : go(`#/add-provider/${encodeURIComponent(e.id)}`)) },
+    { class: 'row', onclick: open },
     mark(e.id),
     h(
       'span',
       { class: 'row-main' },
-      h('span', { class: 'row-top' }, h('b', {}, e.name), e.offered ? h('span', { class: 'tag' }, 'Offered') : e.configured ? h('span', { class: 'tag good' }, 'Set up') : null),
+      h('span', { class: 'row-top' }, h('b', {}, e.name), e.offered ? h('span', { class: 'tag' }, 'Built in') : e.configured ? h('span', { class: 'tag good' }, 'Set up') : null),
       h('span', { class: 'row-sub' }, h('span', { class: 'text' }, `${e.vendor} · ${e.about}`)),
     ),
   );
@@ -6048,7 +6376,7 @@ function connectPanel(e) {
           { class: 'field' },
           h('span', {}, 'Server URL'),
           url,
-          h('small', { class: 'hint' }, e.baseUrl ? 'This is what polyphemus believes it to be. Check it against their docs — endpoints move, and a wrong one fails at the first turn.' : 'Polyphemus has no reliable URL for this one. Get it from their docs and paste it here.'),
+          h('small', { class: 'hint' }, e.baseUrl ? 'The address Polyphemus knows for it. If a first turn fails, check it against their docs: addresses change.' : 'Polyphemus has no reliable URL for this one. Get it from their docs and paste it here.'),
         )
       : null,
     e.connect === 'key'
@@ -6420,7 +6748,12 @@ function offeredBlock(v, c) {
     try {
       await api(`/api/providers/${encodeURIComponent(c.id)}/accept`, {});
       await refresh();
-      toast(`${v.name} through ${c.label} is in use. Choose its models under Models.`);
+      // A key comes next when there isn't one: its box is opened for it, rather than calling the
+      // provider "in use" with nothing to use it with.
+      if (c.signIn === 'key' && !c.hasKey) {
+        keyEditor = { id: c.id };
+        toast(`${v.name} added. Paste its API key to use it.`);
+      } else toast(`${v.name} through ${c.label} is in use. Choose its models under Models.`);
       render();
     } catch (err) {
       use.disabled = false;
@@ -6624,23 +6957,43 @@ function connectionBlock(v, c) {
         key.value = '';
         await refresh();
         toast(problem ?? `Key saved — ${models.length} models available.`);
+        keyEditor = null;
+        // Came here from setup: back to it, where it left off, with this provider to pick from.
+        if (backToSetup && !problem) return go('#/setup');
         render();
       } catch (err) {
-        showError(err);
+        // Under the box, and it stays: a toast went before the person had read it.
+        fill(said, err.message);
+        said.hidden = false;
+        keyEditor = { id: c.id, error: err.message };
         save.disabled = false;
         save.textContent = c.hasKey ? 'Replace and test' : 'Save and test key';
       }
     });
+    const said = h('p', { class: 'hint tight warnish', hidden: true, role: 'alert' });
     // Closed until asked for: a box per provider you might one day add a key to is a wall of
     // inputs, and a saved key is the settled case.
-    form = h('div', { class: 'key-form', hidden: true }, key, save);
+    form = h('div', { class: 'key-form', hidden: true }, key, save, said);
     const reveal = h('button', { class: `btn small ${c.hasKey || v.ready ? '' : 'primary'}` }, c.hasKey ? 'Replace key' : 'Add API key');
     reveal.addEventListener('click', () => {
       form.hidden = false;
       reveal.remove();
+      keyEditor = { id: c.id };
       key.focus();
     });
     buttons.append(reveal);
+    if (keyEditor?.id === c.id) {
+      form.hidden = false;
+      reveal.remove();
+      if (keyEditor.error) {
+        fill(said, keyEditor.error);
+        said.hidden = false;
+      }
+      setTimeout(() => {
+        key.scrollIntoView({ block: 'center' });
+        key.focus();
+      });
+    }
     if (c.hasKey) {
       const signOut = h('button', { class: 'btn small' }, 'Forget key');
       signOut.addEventListener('click', async () => {
@@ -6669,6 +7022,7 @@ function connectionBlock(v, c) {
     c.sandbox?.ok === false && !c.sandboxOff ? sandboxNote(c) : null,
     c.sandboxOff !== null && c.sandboxOff !== undefined && (c.sandboxOff || c.sandbox?.ok === false) ? sandboxSwitch(c) : null,
     c.ready ? allowance(c) : null,
+    c.isolatedNote ? h('p', { class: 'hint tight' }, c.isolatedNote) : null,
     ...troubled.map((m) => h('div', { class: 'note bad' }, h('b', {}, modelName(m)), ` isn’t working through ${c.label}, though the sign-in is: ${clip(m.result.lastError, 200)}`)),
     form,
     c.signIn === 'key' ? h('p', { class: 'hint tight' }, c.hasKey ? 'A key is saved in your vault. Polyphemus never shows it again.' : 'The key goes to your vault and is tested before it’s kept.') : null,
@@ -6996,14 +7350,27 @@ async function profileTarget(m, box) {
 }
 
 // ── First run ──
-// Four steps, in the order the thing works: where models come from, which ones, which is the
-// default, and done. What's already signed in on this computer is offered first — for most people
+// Five steps, in the order the thing works: where models come from, which ones, which is the
+// default, your agent, and where agents run. What's already signed in on this computer is offered first — for most people
 // that's the whole of step one — and nothing is added to the config until you accept it.
 
+/**
+ * The wizard's place, kept while you're on setup: redrawing the screen — the window crossing the
+ * phone/desktop width does it — started it again from step one (a stranger's first run, 2026-09-24).
+ */
+let wizardKept = null;
+/** Set when setup sends you to add a provider by key: a saved key brings you back. */
+let backToSetup = false;
+/**
+ * The key box that's open, and what the last try said: kept across redraws — the window crossing
+ * the phone/desktop width redraws — so neither closes on its own. Never the key itself.
+ */
+let keyEditor = null;
+
 async function setupScreen() {
-  const wizard = { step: 1, source: null, picked: new Set(), offered: [], def: null };
+  const wizard = (wizardKept ??= { step: 1, source: null, picked: new Set(), offered: [], def: null });
   const holder = h('div', { class: 'wizard' });
-  screen(bar(backButton(), title('Set up your models')), holder, { mainClass: 'plain' });
+  screen(bar(backButton(), title('Set up Polyphemus')), holder, { mainClass: 'plain' });
 
   let sources = [];
   try {
@@ -7078,7 +7445,7 @@ async function setupScreen() {
           ? 'Pick one to start with — you can add more later.'
           : 'Nothing is signed in on this computer yet. Have a Claude, ChatGPT or SuperGrok plan? Install its CLI below and sign in. Only have an API key? Connect a provider instead.'),
         options.length ? h('div', { class: 'choices' }, options) : null,
-        h('button', { class: 'linky', onclick: () => go('#/add-provider') }, sources.some((s) => s.ready) ? 'Connect a different provider instead' : 'Connect a provider with an API key'),
+        h('button', { class: 'linky', onclick: () => ((backToSetup = true), go('#/add-provider')) }, sources.some((s) => s.ready) ? 'Connect a different provider instead' : 'Connect a provider with an API key'),
         foot(null, nextButton('Continue', async (e) => {
           const s = wizard.source;
           e.currentTarget.disabled = true;
@@ -7188,9 +7555,26 @@ async function setupScreen() {
             h('span', { class: 'meta' }, modelWay(m))))))),
         // Setup asks where agents run (isolation.md, decided): the owner's risk, chosen knowingly.
         state.isolation ? [h('h2', { class: 'wiz-title' }, 'Where should agents run?'), isolationSetting()] : null,
-        foot(null, nextButton('Start working', () => location.replace('#/')), false),
+        foot(null, nextButton('Start working', startWorking), false),
       );
     }
+  };
+  // Not finished on a level this computer can't run: every first message would be refused (a
+  // stranger's first run, 2026-09-24). Asked, since running on this computer is the owner's risk.
+  const startWorking = async () => {
+    const iso = state.isolation;
+    if (iso && iso.level !== 'host' && !iso.runtime) {
+      const host = iso.levels.find((l) => l.id === 'host');
+      const yes = await confirmSheet('Run agents on this computer for now?', ['There’s no Docker or Podman here, so agents can’t run a single command where they’re isolated.', host?.says ?? '', 'Or install Docker (docs.docker.com/engine/install), then finish setup.'].filter(Boolean), { yes: 'Run them on this computer', no: 'Not yet', danger: true });
+      if (!yes) return;
+      try {
+        await api('/api/isolation', { level: 'host' });
+        await refresh();
+      } catch (err) {
+        return showError(err);
+      }
+    }
+    location.replace('#/');
   };
   draw();
 }
@@ -7346,9 +7730,7 @@ function isolationSetting() {
       showError(err);
     }
   };
-  const runtime = iso.runtime
-    ? `${iso.runtime.name} ${iso.runtime.version}${iso.runtime.rootless ? ', rootless' : ' (anything that can use it is root on this computer: polyphemus never gives its socket to an agent)'}`
-    : 'No Docker or Podman on this computer, so only “On this computer” is available.';
+  const runtime = iso.runtime ? `${iso.runtime.name} ${iso.runtime.version}${iso.runtime.rootless ? ', rootless' : ' (anything that can use it is root on this computer: Polyphemus never gives its socket to an agent)'}` : null;
   return h(
     'div',
     { class: 'panel' },
@@ -7359,7 +7741,9 @@ function isolationSetting() {
           h('span', {}, h('b', {}, l.title), h('small', {}, l.says))),
       ),
     ),
-    h('p', { class: 'hint tight' }, `Workers run with ${runtime}. A project can be set stricter on its Setup tab. Claude Code, Codex and Grok Build run isolated too; each is checked once per version, and isn’t used isolated if a command slips past its worker. Workflow runs work in a clone of their own, with their checks, previews and pages in a worker too. While isolated, Codex can’t use connections.`),
+    h('p', { class: 'hint tight' }, runtime ? `Isolated agents run in containers, with ${runtime}. A project can be set stricter on its Setup tab.` : 'There’s no Docker or Podman here, so agents can only run on this computer for now. Install Docker to isolate them.'),
+    h('details', { class: 'more' }, h('summary', {}, 'More about this'),
+      h('p', { class: 'hint tight' }, 'Claude Code, Codex and Grok Build run isolated too; each is checked once for each version, and isn’t used isolated if a command gets past its container. Workflow runs work in a copy of the project of their own, with their checks, previews and pages in a container too. While isolated, Codex and Grok Build can’t use connections yet.')),
   );
 }
 
@@ -8202,6 +8586,8 @@ async function openSession(id) {
   streaming.clear();
   renderSession();
 }
+/** Each thread's notices since this page opened: they aren't stored, and notes are rebuilt on each draw. */
+const liveNotices = new Map();
 
 function renderSession() {
   const s = current;
@@ -8218,6 +8604,7 @@ function renderSession() {
   const log = h('div', { id: 'log' });
   reactionsOn(log);
   threadNotes(s);
+  for (const n of liveNotices.get(s.meta.id) ?? []) s.notes.push({ seq: n.at ?? s.messages.length, kind: n.kind, text: n.text });
   // How long it's really been going, from polyphemus, not from when you opened the thread.
   if (s.running) s.liveStartedAt = s.workingSince ?? Date.now();
   const input = holdsDraft(h('textarea', { id: 'input', rows: 1, placeholder: 'Message…', 'aria-label': 'Message' }), s.meta.id, () => grow());
@@ -8980,6 +9367,10 @@ function spans(messages, turns, notes, times = [], actors = [], artifacts = []) 
     out.at(-1).times.push(times[i]);
     out.at(-1).actors.push(actors[i] ?? null);
   });
+  // Nothing said yet but something to show — a notice that the first message was refused — gets a
+  // span of its own: with no span to hang on, it was dropped, and the first message just vanished
+  // (a stranger's first run, 2026-09-24).
+  if (!out.length && (notes?.length || artifacts?.length)) out.push({ start: -1, messages: [], times: [], actors: [], turns: [], notes: [], artifacts: [] });
   const home = (seq) => out.findLast((span) => span.start < seq) ?? out[0];
   for (const t of turns ?? []) home(t.endSeq)?.turns.push(t);
   for (const n of notes ?? []) home(n.seq)?.notes.push(n);
@@ -9952,6 +10343,14 @@ function onEvent(data) {
     refreshSoon();
     return;
   }
+  // Notices aren't stored, and a thread's notes are rebuilt each time it's drawn, so they're kept here
+  // for as long as the page is open — for a thread that hasn't opened yet too (one just started,
+  // refused before it had loaded). The first message used to vanish with nothing said (2026-09-24).
+  if (data.sessionId && (data.event?.type === 'notice' || data.event?.type === 'info')) {
+    const at = current?.meta.id === data.sessionId ? current.messages.length : undefined;
+    const kept = liveNotices.get(data.sessionId) ?? [];
+    liveNotices.set(data.sessionId, [...kept, { kind: data.event.type, text: data.event.text, at }].slice(-20));
+  }
   if (!data.sessionId || current?.meta.id !== data.sessionId) return;
   const log = $('#log');
   const e = data.event;
@@ -9975,7 +10374,7 @@ function onEvent(data) {
       break;
     case 'notice':
     case 'info':
-      current.notes.push({ seq: current.messages.length, kind: e.type, text: e.text });
+      (current.notes ??= []).push({ seq: current.messages.length, kind: e.type, text: e.text });
       renderLog();
       break;
     case 'turn_done':
@@ -10029,5 +10428,13 @@ refresh()
   .catch(showError)
   .then(setupPush)
   .catch(() => (push = 'unsupported'))
+  .then(() => {
+    // The first time in, with nothing chosen to run on: straight to setup, as `poly start` promises,
+    // rather than Home and a card pointing there (a stranger's first run, 2026-09-24).
+    if (isOwner() && !state.defaultModel && !state.models.some((m) => m.chosen) && (!location.hash || location.hash === '#/')) {
+      location.replace('#/setup');
+      view = parseRoute();
+    }
+  })
   .then(show);
 connect();

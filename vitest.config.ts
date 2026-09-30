@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     // The owner is named for the fixture, not after whoever's account runs the tests.
-    env: { POLYPHEMUS_CONTAINER_RUNTIME: 'off', POLYPHEMUS_OWNER_NAME: 'Alex' },
+    env: { POLYPHEMUS_CONTAINER_RUNTIME: 'off', POLYPHEMUS_OWNER_NAME: 'Alex', POLYPHEMUS_MCP_REGISTRY: 'http://127.0.0.1:9' },
     // Minutes on a machine without the worker image, once, before any test is timing anything.
     globalSetup: ['packages/core/test/global-setup.ts'],
   },

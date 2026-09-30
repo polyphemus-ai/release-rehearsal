@@ -54,6 +54,7 @@ Each pillar has its own design doc:
 | Scheduling | [design/scheduling.md](design/scheduling.md) | Routines with triggers (time, events, capacity resets); cheap code checks before any model wakes; every firing recorded; quiet unless something changed |
 | Agents and people | [design/agents.md](design/agents.md) | Each project is a server: a roster of agents and people, threads where they work together, and DMs. An agent owns its model route, persona, skills (its own or shared), and routines; templates and skills come built in or from a reviewed store |
 | Projects | [design/projects.md](design/projects.md) | A project is a folder Polyphemus knows about: `AGENTS.md` and `.polyphemus/` in the folder (safe to commit), memory private in `~/.polyphemus`; code lives in `~/projects` or wherever it already is, never inside `~/.polyphemus` |
+| Plugins and connections | [design/plugins.md](design/plugins.md) | Cursor's and Claude Code's plugins read as they are: skills, agents, rules as proposals, MCP servers as connections, hooks and commands never run; installing shows everything first and removing takes exactly what was added; services that let any app sign in are one tap |
 | Upgrades | [design/upgrades.md](design/upgrades.md) | Each version beside the last; the new one checks itself on a copy of your data before the switch; a backup, a watched restart, and going back on its own if it doesn't come up; data only ever adds |
 | Agent-friendly CLI | [design/cli-for-agents.md](design/cli-for-agents.md) | One command registry that generates help, JSON schemas, MCP tools, and the agent guide; config changes planned, validated, reversible, with hand edits detected |
 
@@ -130,7 +131,7 @@ subscriptions:
 |---|---|
 | `claude-cli` | Claude Code, `stream-json` |
 | `codex-cli` | `codex exec --json` |
-| `claude-cli` (again) | Grok Build: a Messages-format stream, parsed by the same code as Claude's |
+| `grok-cli` | Grok Build, driven as its client over its stdio protocol (ACP), so its permission questions come to Polyphemus (`agents/claude-cli.ts` `GrokBuildAgent`, `isolation/grok.ts`) |
 
 They run their own loop and tools. Polyphemus keeps the canonical transcript and stores each
 CLI's native session id so it can resume that session.
@@ -146,8 +147,9 @@ Adapter details worth knowing:
 - **Anthropic:** adaptive thinking with summarized display, automatic prompt caching
   (top-level `cache_control`), and server-side refusal fallbacks (`fallbacks: "default"`) on
   Opus 5 / Fable 5.1. Legacy models (Haiku 4.5 and older) run without thinking.
-- **OpenAI Responses:** `store: false` plus `include: ["reasoning.encrypted_content"]`, so
-  nothing is kept server-side and reasoning still replays. `prompt_cache_key` is the session
+- **OpenAI Responses:** `store: false` plus `include: ["reasoning.encrypted_content"]`: the
+  response isn't stored for later retrieval, and reasoning still replays. What the provider
+  retains otherwise depends on its policies and your account's data controls. `prompt_cache_key` is the session
   id. Reasoning summaries stream as thinking.
 - **xAI:** same adapter. `reasoning_summary` and `prompt_cache_key` are off in the default
   config until they've been verified against the live API.
@@ -159,7 +161,8 @@ Credentials are separate from providers: any provider can use any source.
 | Source | Status |
 |---|---|
 | `api_key` from an env var | ✅ |
-| `api_key` from `~/.polyphemus/credentials.json` (mode 0600, written by `poly login`) | ✅ |
+| `api_key` in the vault, written by `poly login` or Setup | ✅ |
+| `api_key` from `~/.polyphemus/credentials.json` (older installs; read, and moved into the vault by `poly secrets migrate`) | ✅ |
 | `oauth` (PKCE / device code, stored and refreshed) | planned: only where the provider permits third-party use |
 | `cli` (the CLI owns its login; used by agent providers) | ✅ |
 
@@ -226,6 +229,10 @@ what's built, what's now and what's later. Every design doc's own build order ho
 
 ## Decisions log
 
+- 2026-09-29: **Plugins are Cursor's and Claude Code's, read as they are**, rather than a format of
+  Polyphemus's own: both ecosystems are there already, and the two formats are nearly the same. What
+  Polyphemus can't honour safely (hooks, commands) is listed and never run. Built before the first
+  release, at the owner's call ([design/plugins.md](design/plugins.md)).
 - 2026-09-24: **An update can fail, but it can't leave Polyphemus broken.** Versions are installed
   beside each other and switched; the new one checks itself against a copy of the data first; the data
   is backed up; a service that doesn't come up has the old version and the data put back on its own.
@@ -454,7 +461,7 @@ what's built, what's now and what's later. Every design doc's own build order ho
   view (a picture of the page, tapped and typed into), Polyphemus keeps the cookies the site set, and
   agents' browsers start with them. A sign-in is its owner's to place, and it's held back wherever
   anyone besides its owner has a role in the project — the personal-credential trap in
-  [design/secrets.md](design/secrets.md#multiplayer-whose-secret-whose-bot), enforced where the call
+  [design/secrets.md](design/secrets.md#multiplayer-whose-secret-whose-bot-phase-8), enforced where the call
   happens. The install owner isn't counted: they can read the vault on their own computer anyway.
 - 2026-09-12: Connections to outside services are MCP servers that Polyphemus alone talks to. Agent
   CLIs get a gateway MCP server with no credentials; grants are checked at Polyphemus's call layer on

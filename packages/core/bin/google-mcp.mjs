@@ -8,6 +8,8 @@ const service = process.argv[2];
 const token = process.env.ACCESS_TOKEN;
 const base = (process.env.GOOGLE_API ?? 'https://www.googleapis.com').replace(/\/$/, '');
 const MAX_TEXT = 40_000;
+/** The largest file download_file fetches: checked against what Drive says, and again as it arrives. */
+const MAX_DOWNLOAD = 25 * 1024 * 1024;
 
 const send = (message) => process.stdout.write(`${JSON.stringify(message)}\n`);
 const clip = (text) => (text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}\n\n[… ${text.length - MAX_TEXT} more characters]` : text);
@@ -24,6 +26,28 @@ async function google(path, { text = false } = {}) {
   if (!res.ok) throw new GoogleError(`Google answered ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
   return text ? res.text() : res.json();
 }
+
+/**
+ * A file's bytes, stopped at `max` however big the file turns out to be: what Drive said about its
+ * size was checked before, and this checks what actually arrives.
+ */
+async function googleBytes(path, max, name) {
+  const res = await fetch(`${base}${path}`, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(120_000) });
+  if (res.status === 401 || res.status === 403) throw new GoogleError(`${res.status} ${res.status === 401 ? 'Unauthorized' : 'Forbidden'}: Google refused the request.`);
+  if (!res.ok) throw new GoogleError(`Google answered ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of res.body) {
+    total += chunk.length;
+    if (total > max) {
+      await res.body.cancel().catch(() => {});
+      throw new GoogleError(`${name} turned out bigger than the ${megabytes(max)} download_file takes, so it wasn’t downloaded.`);
+    }
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks.map((c) => Buffer.from(c)));
+}
+const megabytes = (n) => `${(n / (1024 * 1024)).toFixed(n < 10 * 1024 * 1024 ? 1 : 0)} MB`;
 
 // ── Drive ──
 
@@ -56,6 +80,27 @@ const driveTools = {
       const params = new URLSearchParams({ q: 'trashed = false', orderBy: 'modifiedTime desc', pageSize: String(Math.min(Math.max(Number(max) || 20, 1), 50)), fields: DRIVE_FIELDS });
       const { files = [] } = await google(`/drive/v3/files?${params}`);
       return JSON.stringify(files.map(describeFile), null, 2);
+    },
+  },
+  download_file: {
+    description:
+      'Download an ordinary Drive file by id (a ZIP, a PDF, a spreadsheet file, an image…) into this project’s attachments folder, and get back its path there, to open with your file tools. Up to 25 MB. Google Docs, Sheets and Slides are read with read_file instead.',
+    inputSchema: object({ id: { type: 'string' } }, ['id']),
+    run: async ({ id }) => {
+      if (!id) throw new GoogleError('Give the file’s id (from search_files).');
+      const file = await google(`/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,mimeType,size`);
+      if (file.mimeType === 'application/vnd.google-apps.folder') throw new GoogleError(`${file.name} is a folder: search inside it with search_files, and download the files in it.`);
+      if (String(file.mimeType ?? '').startsWith('application/vnd.google-apps.')) throw new GoogleError(`${file.name} is a Google ${EXPORTS[file.mimeType] ? 'document' : 'file'} with no file of its own to download: read it with read_file.`);
+      const declared = Number(file.size);
+      if (!Number.isFinite(declared)) throw new GoogleError(`Drive didn’t say how big ${file.name} is, so it wasn’t downloaded.`);
+      if (declared > MAX_DOWNLOAD) throw new GoogleError(`${file.name} is ${megabytes(declared)}, over the ${megabytes(MAX_DOWNLOAD)} download_file takes, so it wasn’t downloaded.`);
+      const bytes = await googleBytes(`/drive/v3/files/${encodeURIComponent(id)}?alt=media`, MAX_DOWNLOAD, file.name);
+      // The bytes as an embedded resource, which polyphemus saves in the calling thread's folder: this
+      // server never picks a path. The name is only a suggestion, and cleaned where it's saved.
+      return [
+        { type: 'text', text: `Downloaded ${file.name} from Drive (${bytes.length} bytes).` },
+        { type: 'resource', resource: { uri: `gdrive:///files/${encodeURIComponent(file.id ?? id)}`, name: String(file.name ?? 'download'), mimeType: String(file.mimeType ?? 'application/octet-stream'), blob: bytes.toString('base64') } },
+      ];
     },
   },
   read_file: {
@@ -149,7 +194,8 @@ for await (const line of createInterface({ input: process.stdin })) {
       continue;
     }
     try {
-      send({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: await tool.run(params.arguments ?? {}) }] } });
+      const out = await tool.run(params.arguments ?? {});
+      send({ jsonrpc: '2.0', id, result: { content: typeof out === 'string' ? [{ type: 'text', text: out }] : out } });
     } catch (err) {
       // A refused token is a JSON-RPC error, so polyphemus sees it as the connection's problem, not the model's.
       if (/^40[13]\b/.test(err.message)) send({ jsonrpc: '2.0', id, error: { code: -32001, message: err.message } });

@@ -1258,3 +1258,34 @@ body.resizing .computer-stage { pointer-events: none; }
 /* The message the flow sent you to: marked for a moment, then left alone. */
 .msg.found { animation: found 2.2s ease-out; }
 @keyframes found { 0%, 60% { box-shadow: 0 0 0 3px var(--attention); } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* A plugin's plan: what it adds, and what it doesn't and why. */
+.plan-head { display: block; margin: 14px 0 4px; font-size: 14px; }
+ul.plan { list-style: none; margin: 0; padding: 0; }
+ul.plan li { padding: 3px 0; font-size: 14px; overflow-wrap: anywhere; }
+ul.plan li.skips { color: var(--muted); }
+ul.plan small { color: var(--muted); }
+
+/* The connections directory: cards with a logo, like the big assistants' connector pages. */
+.segmented.extend { margin-bottom: 10px; }
+.dir-head { display: flex; align-items: center; gap: 12px; margin: 6px 0 8px; }
+.dir-head .segmented { flex: 1; max-width: 320px; }
+.logo-stack { display: inline-flex; align-items: center; border: 0; background: none; padding: 4px; color: var(--muted); font-size: 13.5px; white-space: nowrap; }
+.logo-stack .logo-tile { margin-left: -8px; box-shadow: 0 0 0 2px var(--surface); }
+.logo-stack .logo-tile:first-child { margin-left: 0; }
+.logo-stack > span:last-child { margin-left: 8px; }
+.dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; margin-bottom: 8px; }
+.dir-card { display: flex; align-items: flex-start; gap: 12px; text-align: left; width: 100%; border: 1px solid var(--line); background: var(--raised); color: var(--ink); border-radius: 14px; padding: 12px; font: inherit; min-width: 0; }
+button.dir-card { cursor: pointer; }
+button.dir-card > .ico { align-self: center; color: var(--muted); }
+.dir-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.dir-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.dir-title b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir-title .checked { color: var(--accent); display: inline-flex; }
+.dir-about { color: var(--ink); opacity: 0.8; font-size: 14px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.dir-by { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dir-add { flex: none; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--well); color: var(--ink); display: grid; place-items: center; cursor: pointer; align-self: center; }
+.dir-add.added { background: var(--well); color: var(--good); border-color: transparent; }
+.logo-tile { width: var(--size, 44px); height: var(--size, 44px); flex: none; display: inline-grid; place-items: center; border-radius: 11px; }
+.logo-tile .service-tile { width: 100%; height: 100%; }
+.logo-tile.has-logo { background: #fff; border: 1px solid var(--line); }

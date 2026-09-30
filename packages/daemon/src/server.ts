@@ -107,6 +107,14 @@ import {
   installSkill,
   skillOrigin,
   SKILL_SOURCES,
+  installedPlugins,
+  installPlugin,
+  listMarketplace,
+  loadPlugin,
+  MARKETPLACES,
+  planInstall,
+  removePlugin,
+  type PluginTarget,
   projectAgentsDir,
   templates,
   updateAgent,
@@ -201,6 +209,7 @@ const CONTENT_TYPES: Record<string, string> = {
   '.webmanifest': 'application/manifest+json',
   '.png': 'image/png',
   '.woff2': 'font/woff2',
+  '.json': 'application/json; charset=utf-8',
 };
 /** Who the terminal on this computer is, when it signs in with the local key. */
 const LOCAL_CLIENT: DeviceMeta = { id: 'local', name: 'terminal on this computer', createdAt: 0 };
@@ -226,6 +235,8 @@ const PUBLIC_FILES = new Set([
   'badge.png',
   'fonts/figtree.woff2',
   'fonts/bricolage.woff2',
+  // Services' logos, for the connections directory (scripts/brand-icons.mjs).
+  'brand-icons.json',
 ]);
 
 export interface DaemonOptions {
@@ -1729,6 +1740,12 @@ export async function startDaemon(opts: DaemonOptions): Promise<Daemon> {
         label: where.label,
         ...(found ? { installed: found.installed, signedIn: found.signedIn ?? null, account: found.account ?? null, sandbox: found.sandbox ?? null, onWindows: found.onWindows === true } : {}),
         install: isCliAdapter(providerConfig.adapter) ? (cliInstallCommand(providerConfig.adapter) ?? null) : null,
+        // Said on its card, not only once a thread finds out: isolated, these CLIs get no gateway, so no
+        // connections and none of polyphemus's own tools (2026-09-28).
+        isolatedNote:
+          providerConfig.adapter === 'codex-cli' || providerConfig.adapter === 'grok-cli'
+            ? `Where agents are isolated, ${providerConfig.adapter === 'codex-cli' ? 'Codex' : 'Grok Build'} can’t use connections (GitHub, Notion, Drive…) or Polyphemus’s own tools, like showing you a file, yet. Claude Code and API models can.`
+            : null,
         // Codex only: the owner turned its sandbox off for this computer.
         sandboxOff: providerConfig.adapter === 'codex-cli' ? providerConfig.sandbox === false : null,
         // Where its plan usage comes from, when that isn't obvious — and why it's unknown, when it is.
@@ -1965,6 +1982,64 @@ export async function startDaemon(opts: DaemonOptions): Promise<Daemon> {
       return { dir: projectSkillsDir(project.path), words: project.name, root: project.path };
     }
     throw new HttpError(400, 'Say where it goes: library, agent:<id> or project:<slug>.');
+  }
+
+  /**
+   * Plugins (docs/design/plugins.md): the owner's to browse, look inside, install and remove — they
+   * fetch from the network, and add skills, agents and connections for the whole install.
+   */
+  async function pluginsApi(req: IncomingMessage, res: ServerResponse, parts: string[], body: Record<string, unknown>, access: Access, device: DeviceMeta): Promise<void> {
+    if (!access.owner) throw new HttpError(403, OWNER_ONLY);
+    const get = req.method === 'GET';
+    const target = (raw: unknown): PluginTarget => {
+      const said = String(raw ?? 'library');
+      if (said === 'library') return { kind: 'library' };
+      const slug = said.startsWith('project:') ? said.slice(8) : '';
+      if (!slug || !polyphemus.store.project(slug)) throw new HttpError(400, 'Install it into the library, or into a project.');
+      return { kind: 'project', slug };
+    };
+    const failed = (err: unknown): never => {
+      throw new HttpError(err instanceof PolyphemusError && err.code === 'NOT_FOUND' ? 404 : 400, (err as Error).message);
+    };
+    if (get && parts.length === 2) return sendJson(res, 200, { plugins: installedPlugins(polyphemus.home), marketplaces: MARKETPLACES.map((m) => ({ id: m.id, name: m.name })) });
+    if (get && parts[2] === 'browse' && parts.length === 3) {
+      const params = new URL(req.url ?? '/', 'http://polyphemus').searchParams;
+      const words = (params.get('q') ?? '').toLowerCase().trim();
+      const from = params.get('from') ?? '';
+      const entries = [];
+      const problems = [];
+      for (const m of MARKETPLACES.filter((x) => !from || x.id === from)) {
+        try {
+          const listing = await listMarketplace(polyphemus.home, m);
+          entries.push(...listing.entries.map(({ hints: _hints, ...e }) => ({ ...e, marketplaceName: m.name })));
+        } catch (err) {
+          problems.push(`${m.name}: ${(err as Error).message}`);
+        }
+      }
+      const found = entries.filter((e) => !words || `${e.name} ${e.description} ${e.category ?? ''}`.toLowerCase().includes(words));
+      return sendJson(res, 200, { total: entries.length, plugins: found.slice(0, 200), more: Math.max(0, found.length - 200), problems });
+    }
+    if (req.method === 'POST' && parts[2] === 'plan' && parts.length === 3) {
+      const { plugin, origin } = await loadPlugin(polyphemus.home, String(body.ref ?? '')).catch(failed);
+      return sendJson(res, 200, { plan: await planInstall(polyphemus, plugin, target(body.target)), origin });
+    }
+    if (req.method === 'POST' && parts[2] === 'install' && parts.length === 3) {
+      const { plugin, origin } = await loadPlugin(polyphemus.home, String(body.ref ?? '')).catch(failed);
+      const raw = body.settings && typeof body.settings === 'object' ? (body.settings as Record<string, unknown>) : {};
+      const settings = Object.fromEntries(Object.entries(raw).filter(([k, v]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(k) && typeof v === 'string' && v));
+      const where = target(body.target);
+      const done = await installPlugin(polyphemus, plugin, where, { by: `person:${requirePerson(device).id}`, origin, settings: settings as Record<string, string> }).catch(failed);
+      opts.log?.(`Installed the ${plugin.displayName} plugin ${where.kind === 'library' ? 'into the library' : `into ${where.slug}`}`);
+      broadcast({ type: 'skills_changed' });
+      return sendJson(res, 201, { installed: done.installed, authorize: done.authorize });
+    }
+    if (req.method === 'POST' && parts[2] === 'remove' && parts.length === 3) {
+      const out = await removePlugin(polyphemus, String(body.name ?? ''), target(body.target), { connections: body.connections === true }).catch(failed);
+      opts.log?.(`Removed the ${String(body.name)} plugin`);
+      broadcast({ type: 'skills_changed' });
+      return sendJson(res, 200, out);
+    }
+    throw new HttpError(404, 'No such plugins route.');
   }
 
   async function skillsApi(req: IncomingMessage, res: ServerResponse, parts: string[], body: Record<string, unknown>, access: Access, device: DeviceMeta): Promise<void> {
@@ -2734,7 +2809,10 @@ export async function startDaemon(opts: DaemonOptions): Promise<Daemon> {
           if (classifyError(message) === 'auth') {
             polyphemus.credentials.deleteApiKey(id);
             polyphemus.registry.forget(id);
-            throw new HttpError(400, `${id} rejected that key, so it wasn't saved: ${message}`);
+            // Said for a person, not as the provider's raw JSON (a stranger's first run, 2026-09-24).
+            const status = /\b(401|403)\b/.exec(message)?.[1];
+            opts.log?.(`A key for ${id} was turned down: ${message}`);
+            throw new HttpError(400, `That key didn’t work${status ? ` (the provider answered ${status})` : ''}, so it wasn’t saved. Check you copied all of it, and that it’s from the account you mean, then paste it again.`);
           }
           return sendJson(res, 200, { providers: vendorList(), models: [], problem: `Saved, but the test request failed: ${message}` });
         }
@@ -3067,6 +3145,7 @@ export async function startDaemon(opts: DaemonOptions): Promise<Daemon> {
     }
     // Skills: what's installed where, the library to add from, and installing or removing one.
     if (parts[1] === 'skills') return skillsApi(req, res, parts, body, access, device);
+    if (parts[1] === 'plugins') return pluginsApi(req, res, parts, body, access, device);
 
     // What's in an agent's computer's Downloads and on its Desktop, and fetching one: files out of it.
     if (req.method === 'GET' && parts[1] === 'agents' && parts[2] && parts[3] === 'computer' && parts[4] === 'files') {

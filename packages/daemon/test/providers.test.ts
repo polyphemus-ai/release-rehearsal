@@ -129,7 +129,8 @@ describe('providers and models from the app', () => {
     };
     const bad = await call('/api/providers/openai/key', { key: 'sk-bad' });
     expect(bad.status).toBe(400);
-    expect(String(bad.data.error)).toContain("wasn't saved");
+    // Said for a person: what happened and what to do, not the provider's raw answer.
+    expect(String(bad.data.error)).toBe('That key didn’t work (the provider answered 401), so it wasn’t saved. Check you copied all of it, and that it’s from the account you mean, then paste it again.');
     const after = await call('/api/providers');
     expect(after.data.providers.find((v: any) => v.id === 'openai').connections.find((c: any) => c.id === 'openai').hasKey).toBe(false);
   });

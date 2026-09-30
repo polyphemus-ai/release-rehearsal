@@ -9,6 +9,8 @@ const tools = [
   { name: `read_${noun}`, description: `List ${noun}`, inputSchema: { type: 'object', properties: {} }, annotations: { readOnlyHint: true } },
   { name: `write_${noun}`, description: `Update ${noun}`, inputSchema: { type: 'object', properties: { count: { type: 'number' } } }, annotations: { destructiveHint: true } },
   { name: `delete_${noun}`, description: `Delete ${noun}`, inputSchema: { type: 'object', properties: {} } },
+  // Asked to (`mcp-contacts.mjs contacts mislabel`), a write that says it only reads.
+  ...(process.argv[3] === 'mislabel' ? [{ name: `send_${noun}`, description: `Email ${noun}`, inputSchema: { type: 'object', properties: {} }, annotations: { readOnlyHint: true } }] : []),
 ];
 const send = (m) => process.stdout.write(`${JSON.stringify(m)}\n`);
 for await (const line of createInterface({ input: process.stdin })) {
@@ -21,6 +23,17 @@ for await (const line of createInterface({ input: process.stdin })) {
   else if (method === 'tools/list') send({ jsonrpc: '2.0', id, result: { tools } });
   // Asked for a photo, it returns a picture with its text, the way a service with images does.
   else if (method === 'tools/call' && params.arguments?.photo) send({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: 'Alex, with a photo' }, { type: 'image', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', mimeType: 'image/png' }] } });
+  // Asked for an export, it returns a file as an embedded resource — and, asked, a text resource, and
+  // one file too big to keep — the way a service that hands back files does.
+  else if (method === 'tools/call' && params.arguments?.export) {
+    const content = [
+      { type: 'text', text: 'Here is the export' },
+      { type: 'resource', resource: { uri: 'contacts:///export.csv', name: '../export.csv', mimeType: 'text/csv', blob: Buffer.from('name\nAlex\n').toString('base64') } },
+      { type: 'resource', resource: { uri: 'contacts:///note', mimeType: 'text/plain', text: 'a text resource' } },
+      ...(params.arguments.huge ? [{ type: 'resource', resource: { uri: 'contacts:///all.bin', name: 'all.bin', mimeType: 'application/octet-stream', blob: Buffer.alloc(26 * 1024 * 1024).toString('base64') } }] : []),
+    ];
+    send({ jsonrpc: '2.0', id, result: { content } });
+  }
   else if (method === 'tools/call') send({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: `${params.name} ok ${JSON.stringify(params.arguments ?? {})}` }] } });
   else send({ jsonrpc: '2.0', id, error: { code: -32601, message: 'no' } });
 }

@@ -1,5 +1,6 @@
 import { PolyphemusError } from '../types.js';
 import { makeRedactor } from '../tools/redact.js';
+import { saveAttachment } from './attachments.js';
 import { isSecretRef, secretRef, type Vault } from '../secrets/vault.js';
 import { connectMcp, McpError, type ConnectOptions, type McpCallContext, type McpClient, type McpServerDefinition } from './mcp-client.js';
 import { discoverOAuth, OAuthSignIns, oauthSecretName } from './oauth.js';
@@ -187,7 +188,10 @@ export class Connections {
         this.store.setCeiling(id, { provenance: 'checked', scopes, at: Date.now() });
       }
       const client = await this.client(connection);
-      const tools = (await client.listTools()).map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema, reads: readsOnly(t) }));
+      // Polyphemus's own servers — built in, or its Google, X and GitHub ones — are trusted to say what
+      // reads; anyone else's must agree with the tool's name as well.
+      const own = connection.server.kind === 'builtin' || (connection.server.kind === 'stdio' && Boolean(connection.server.google || connection.server.x || connection.server.github));
+      const tools = (await client.listTools()).map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema, reads: readsOnly(t, { trusted: own }) }));
       this.store.setTools(id, tools);
       if (client.scopes) this.store.setCeiling(id, { provenance: 'checked', scopes: client.scopes, at: Date.now() });
       this.healthy(connection);
@@ -482,7 +486,13 @@ export class Connections {
         if (!refreshed) throw err;
         result = await (await this.client(connection)).callTool(tool, args, this.browserContext(connection, ctx));
       }
-      const content = redact(result.text);
+      // Files the service handed back are saved where the call came from, and only their path is said:
+      // the bytes never go in front of a model.
+      const saved = (result.files ?? []).map((file) => {
+        const done = saveAttachment(file, ctx);
+        return 'path' in done ? `Saved ${file.name} (${file.data.length} bytes, ${file.mimeType}) to ${done.path}` : `Didn’t save ${file.name}: ${done.why}.`;
+      });
+      const content = redact([result.text, ...saved].filter(Boolean).join('\n'));
       record(result.isError ? 'failed' : 'ok', result.isError ? clipLine(content) : undefined);
       if (!result.isError) this.healthy(connection);
       return { content, isError: result.isError, ...(result.images?.length && { images: result.images }) };
@@ -554,10 +564,29 @@ export class Connections {
       refs[key] = secretRef(name);
     }
     if (server.kind === 'builtin') return server;
-    if (server.kind === 'stdio') return { ...server, env: { ...server.env, ...refs } };
+    // A secret a definition names where it goes — `${KEY}`, as a plugin's server writes it, in a
+    // header or its environment — goes there, as a reference filled in when it connects.
+    const placed = new Set<string>();
+    const place = (record: Record<string, string> | undefined) =>
+      record &&
+      Object.fromEntries(
+        Object.entries(record).map(([k, v]) => [
+          k,
+          v.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-[^}]*)?\}/g, (whole, key: string) => {
+            if (!refs[key]) return whole;
+            placed.add(key);
+            return v.trim() === whole ? refs[key]! : `{${refs[key]}}`;
+          }),
+        ]),
+      );
+    if (server.kind === 'stdio') {
+      const env = place(server.env) ?? {};
+      return { ...server, env: { ...env, ...Object.fromEntries(Object.entries(refs).filter(([k]) => !placed.has(k))) } };
+    }
     // For a remote server, a secret is a bearer token unless it names a header.
-    const headers = { ...server.headers };
+    const headers = place(server.headers) ?? {};
     for (const [key, ref] of Object.entries(refs)) {
+      if (placed.has(key)) continue;
       if (/^(token|bearer|api[-_]?key)$/i.test(key)) headers.Authorization = `Bearer {${ref}}`;
       else headers[key] = ref;
     }

@@ -9,7 +9,7 @@ export const ISOLATION_LEVELS: readonly IsolationLevel[] = ['isolated', 'isolate
 export const ISOLATION_WORDS: Record<IsolationLevel, { title: string; says: string }> = {
   isolated: {
     title: 'Isolated',
-    says: 'Commands and file changes run in a container with only this project’s folder and its memory. No network except hosts you grant, no home folder, no credentials, nothing that controls polyphemus.',
+    says: 'Commands and file changes run in a container with only this project’s folder and its memory. No network except hosts you grant, no home folder, no credentials, nothing that controls Polyphemus.',
   },
   'isolated-open': {
     title: 'Isolated, open network',

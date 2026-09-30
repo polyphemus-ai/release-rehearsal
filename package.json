@@ -19,6 +19,7 @@
     "@changesets/cli": "^3.0.2",
     "@types/node": "^22.20.2",
     "esbuild": "^0.28.2",
+    "simple-icons": "16.33.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.0"
   },

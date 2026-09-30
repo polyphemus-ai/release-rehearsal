@@ -12,7 +12,9 @@ can reach, what changed, and what needs you.
 
 ## Install
 
-Requirements: **Node.js 22.13 or newer**, **git**, and **Linux or macOS** (on Windows, use WSL2).
+Requirements: **Linux or macOS** (on Windows, the PowerShell installer sets up WSL2 for you),
+**git**, and **Node.js 22.13 or newer** — the install script downloads its own Node when yours is
+missing or older, and needs only `curl` to do it.
 For subscriptions, the vendor CLIs you already use (`claude`, `codex`, `grok`), signed in.
 
 **Docker or Podman**, for agents to work. By default an agent's commands and file changes run in a
@@ -31,8 +33,12 @@ poly pair     # pair your phone: a one-time code, or scan the QR
 ```
 
 `poly start` is the whole first run: the daemon as a background service, this computer paired, and
-the setup wizard open — where you pick models, name your agent, and choose where agents run. On
-Windows, run all of this inside WSL2; `poly start` opens Windows's own browser.
+the app open in your browser, where setup asks you to pick models, name your agent, and choose where
+agents run. On a server or in a container with no service manager for your user, run `poly serve`
+in its own terminal (or under your process manager) first, then `poly start`. On
+Windows, run `irm https://polyphemus.ai/install.ps1 | iex` in PowerShell: it sees to WSL2 and Ubuntu
+(asking before each change), installs Polyphemus inside them, and opens setup in Windows's own
+browser. After that, `poly` runs inside WSL.
 
 The app is served by your own computer, on this machine and your [Tailscale](https://tailscale.com)
 network only — nothing goes through a Polyphemus server, because there isn't one.
@@ -52,7 +58,8 @@ follows beta releases too; `--channel stable` goes back.
   network except hosts you grant. The vendor CLIs stay on your computer with their tools sent to the
   container. You choose the level: Isolated, Isolated with an open network, or On this computer
   (commands run as you; Polyphemus's guards keep credential files out of reach, but they aren't a
-  boundary). See [docs/design/isolation.md](docs/design/isolation.md).
+  boundary). While isolated, Codex and Grok Build can't use connections yet (API models and Claude
+  Code can). See [docs/design/isolation.md](docs/design/isolation.md).
 - **Asks first.** Commands that change things ask first unless you choose YOLO. (Codex doesn't ask:
   it relies on its own sandbox, or on the worker when agents are isolated.)
 - **Workflows prove their work.** Status comes from exit codes, commits and service responses, not

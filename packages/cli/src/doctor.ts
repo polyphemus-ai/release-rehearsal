@@ -66,7 +66,7 @@ export async function diagnose(polyphemus: Polyphemus, opts: { port: number; ver
 
   // Polyphemus itself.
   const running = await deps.daemon(port);
-  add(running ? { area: 'Polyphemus', state: 'ok', what: `${opts.version}, running at http://127.0.0.1:${port}` } : { area: 'Polyphemus', state: 'warn', what: `${opts.version}, not running`, fix: ['poly start — runs it in the background and opens setup in your browser'] });
+  add(running ? { area: 'Polyphemus', state: 'ok', what: `${opts.version}, running at http://127.0.0.1:${port}` } : { area: 'Polyphemus', state: 'warn', what: `${opts.version}, not running`, fix: ['poly start — runs it in the background and opens setup in your browser', 'Without a service manager (a container, a root shell, some servers): poly serve in its own terminal, then poly start'] });
 
   // Models: what can actually run one.
   let usable = 0;

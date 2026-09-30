@@ -32,6 +32,14 @@ describe('update checks', () => {
     expect(compareVersions('0.10.0', '0.9.9')).toBe(1);
     expect(compareVersions('1.0.0-beta.1', '1.0.0')).toBe(-1);
     expect(compareVersions('1.0.0', '1.0.0')).toBe(0);
+    // Prerelease parts one by one, numbers as numbers (Codex review, 2026-09-24).
+    expect(compareVersions('1.0.0-beta.9', '1.0.0-beta.10')).toBe(-1);
+    expect(compareVersions('1.0.0-beta.10', '1.0.0-beta.11')).toBe(-1);
+    expect(compareVersions('1.0.0-beta.10', '1.0.0-beta.9')).toBe(1);
+    expect(compareVersions('1.0.0-beta.10', '1.0.0')).toBe(-1);
+    expect(compareVersions('1.0.0-alpha', '1.0.0-alpha.1')).toBe(-1);
+    expect(compareVersions('1.0.0-alpha.1', '1.0.0-alpha.beta')).toBe(-1);
+    expect(compareVersions('1.0.0-beta.2', '1.0.0-rc.1')).toBe(-1);
   });
 
   it('asks npm once a day, remembers the answer, and says when there is a newer one', async () => {

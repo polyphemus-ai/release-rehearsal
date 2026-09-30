@@ -12,6 +12,20 @@ export { inWsl } from '@polyphemus/core';
 /** systemd is what started this system: the check systemd's own tools use. */
 const systemdRunning = (): boolean => existsSync('/run/systemd/system');
 
+/**
+ * Whether this computer can run Polyphemus as a background service for you. On Linux that's a user
+ * systemd, which containers, root shells and some servers don't have — where `poly start` failed with
+ * only "systemctl --user daemon-reload failed" (a stranger's first run, 2026-09-24).
+ */
+export function canRunService(): boolean {
+  if (process.platform !== 'linux') return process.platform === 'darwin';
+  return systemdRunning() && spawnSync('systemctl', ['--user', 'show-environment'], { stdio: 'ignore' }).status === 0;
+}
+
+/** What to say, and do instead, where there's no service manager for you. */
+export const NO_SERVICE =
+  'There’s no service manager for your user here (common in containers, root shells and some servers), so Polyphemus can’t run in the background by itself. Run poly serve in another terminal, or under your own process manager, then poly start again.';
+
 export interface UnitOptions {
   node: string;
   launcher: string;
@@ -117,6 +131,7 @@ function systemd(): ServiceManager {
       if (inWsl() && !systemdRunning()) {
         throw new PolyphemusError('WSL isn’t running systemd, which poly service needs. Turn it on: put these two lines in /etc/wsl.conf (sudo nano /etc/wsl.conf) — [boot] and systemd=true — then run wsl --shutdown in Windows and open your Linux terminal again. Or run poly serve in a terminal instead.');
       }
+      if (!canRunService()) throw new PolyphemusError(NO_SERVICE, 'USAGE', 'poly serve');
       const stderr = String((err as { stderr?: Buffer }).stderr ?? '').trim();
       throw new PolyphemusError(`systemctl --user ${args.join(' ')} failed${stderr ? `: ${stderr}` : '.'}`);
     }

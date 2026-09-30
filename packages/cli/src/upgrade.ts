@@ -176,8 +176,11 @@ export interface UpdateRecord {
   to: string;
   at: number;
   backup: string;
-  /** What happened: the update went live, or went back on its own. */
-  outcome: 'live' | 'went-back' | 'rolled-back';
+  /**
+   * What happened: `switching` is written before the switch and replaced once it's settled, so an
+   * updater that dies partway still leaves a record to roll back from (Codex review, 2026-09-24).
+   */
+  outcome: 'switching' | 'live' | 'went-back' | 'rolled-back' | 'restored';
 }
 
 const historyFile = (home: string) => join(home, 'updates.json');
@@ -192,6 +195,26 @@ export function updateHistory(home: string): UpdateRecord[] {
 
 function record(home: string, entry: UpdateRecord): void {
   writeFileSync(historyFile(home), `${JSON.stringify([...updateHistory(home), entry].slice(-20), null, 2)}\n`, { mode: 0o600 });
+}
+
+/** Settles the last record: the switch it was written before has gone live, or gone back. */
+function settle(home: string, outcome: UpdateRecord['outcome']): void {
+  const all = updateHistory(home);
+  if (all.length) all[all.length - 1]!.outcome = outcome;
+  writeFileSync(historyFile(home), `${JSON.stringify(all, null, 2)}\n`, { mode: 0o600 });
+}
+
+/** Each step of putting things back, tried whatever the one before did: what didn't work, in words. */
+function tryEach(steps: Array<[string, () => unknown]>): string[] {
+  const failed: string[] = [];
+  for (const [what, step] of steps) {
+    try {
+      if (step() === false) failed.push(what);
+    } catch (err) {
+      failed.push(`${what} (${(err as Error).message.split('\n')[0]})`);
+    }
+  }
+  return failed;
 }
 
 // —— switching ————————————————————————————————————————————————————————————————————————————————
@@ -320,38 +343,46 @@ export async function upgrade(target: string, deps: UpgradeDeps): Promise<Upgrad
   if (!(await deps.waitForIdle())) return { ok: false, changed: false, why: 'Sessions were still working, so nothing was changed. Update again when they’ve finished, or with --now.' };
   const backup = backUp(home, `before-${target}`);
 
-  // 4. The switch.
-  const goBack = (): boolean => {
-    deps.service?.stop();
-    restore(home, backup);
-    let back = true;
-    if (place.kind === 'versions') switchTo(place.prefix, from, [target]);
-    else back = install(place.prefix, `${name}@${from}`).ok;
-    deps.service?.start();
-    return back;
-  };
+  // 4. The switch, recorded before it's made.
+  const goBack = (): string[] =>
+    tryEach([
+      ['stopping the service', () => deps.service?.stop()],
+      ['putting your data back', () => restore(home, backup)],
+      [`putting ${from} back`, () => (place.kind === 'versions' ? switchTo(place.prefix, from, [target]) : install(place.prefix, `${name}@${from}`).ok)],
+      ['starting the service', () => deps.service?.start()],
+    ]);
+  record(home, { from, to: target, at: Date.now(), backup, outcome: 'switching' });
   if (place.kind === 'versions') switchTo(place.prefix, target, [from]);
   else {
     const inPlace = install(place.prefix, spec);
     if (!inPlace.ok) {
       const back = install(place.prefix, `${name}@${from}`).ok;
       rmSync(staged, { recursive: true, force: true });
+      settle(home, 'went-back');
       return { ok: false, changed: true, wentBack: back, why: `npm couldn’t install ${spec} in place (${inPlace.why})${back ? `, so ${from} was put back` : `, and putting ${from} back failed too: npm install -g ${name}@${from}`}.` };
     }
     rmSync(staged, { recursive: true, force: true });
   }
 
-  // 5. The service onto it, and watched.
+  // 5. The service onto it, and watched. A restart that fails outright is as bad as one that doesn't
+  // come up: it used to skip going back, and leave nothing on record (Codex review, 2026-09-24).
   if (deps.service) {
-    deps.service.restart();
-    const why = await deps.unhealthy();
+    let why: string | undefined;
+    try {
+      deps.service.restart();
+      why = await deps.unhealthy();
+    } catch (err) {
+      why = `restarting it failed: ${(err as Error).message.split('\n')[0]}`;
+    }
     if (why) {
-      const back = goBack();
-      record(home, { from, to: target, at: Date.now(), backup, outcome: 'went-back' });
-      return { ok: false, changed: true, wentBack: back, why: `${target} didn’t come up (${why}), so ${from} and your data from just before were put back.` };
+      const failed = goBack();
+      settle(home, 'went-back');
+      return failed.length
+        ? { ok: false, changed: true, wentBack: false, why: `${target} didn’t come up (${why}), and putting things back didn’t fully work: ${failed.join('; ')} failed. Your data from just before is in ${backup}; poly rollback --restore tries again.` }
+        : { ok: false, changed: true, wentBack: true, why: `${target} didn’t come up (${why}), so ${from} and your data from just before were put back.` };
     }
   }
-  record(home, { from, to: target, at: Date.now(), backup, outcome: 'live' });
+  settle(home, 'live');
   return { ok: true, to: target, backup };
 }
 
@@ -362,9 +393,15 @@ export async function upgrade(target: string, deps: UpgradeDeps): Promise<Upgrad
  */
 export async function rollback(deps: Omit<UpgradeDeps, 'waitForIdle'> & { waitForIdle(): Promise<boolean>; restoreData?: boolean }): Promise<{ ok: boolean; why: string }> {
   const { home, place } = deps;
-  const last = [...updateHistory(home)].reverse().find((entry) => entry.outcome === 'live');
+  const history = updateHistory(home);
   const now = currentVersion();
-  if (!last || last.to !== now) return { ok: false, why: `There’s no update to ${now} on record to go back from.` };
+  // An update to this version that went live — or was being switched to when the updater stopped.
+  const last = [...history].reverse().find((entry) => (entry.outcome === 'live' || entry.outcome === 'switching') && entry.to === now);
+  // Already rolled back by hand, and now asked for the data too: that update's backup, with no
+  // version to change (Codex review, 2026-09-24: it refused, finding nothing to go back from).
+  const rolledBack = history.at(-1)?.outcome === 'rolled-back' && history.at(-1)?.to === now ? history.at(-1) : undefined;
+  if (deps.restoreData && rolledBack && (!last || history.indexOf(last) < history.indexOf(rolledBack))) return restoreOnly(deps, rolledBack);
+  if (!last) return { ok: false, why: `There’s no update to ${now} on record to go back from.` };
   if (!isVersion(last.from)) return { ok: false, why: 'The update record doesn’t name a version to go back to.' };
   // Putting data back replaces the database: a daemon nothing here can stop would keep writing to
   // the old one, and everything after would be lost (security review, 2026-09-24).
@@ -391,6 +428,25 @@ export async function rollback(deps: Omit<UpgradeDeps, 'waitForIdle'> & { waitFo
   record(home, { from: last.to, to: last.from, at: Date.now(), backup: last.backup, outcome: 'rolled-back' });
   if (why) return { ok: false, why: `${last.from} is back, but the service didn’t come up (${why}).${deps.restoreData ? '' : ' If it says the data is newer, try: poly rollback --restore'}` };
   return { ok: true, why: `Back on ${last.from}${deps.restoreData ? `, with your data from ${new Date(last.at).toLocaleString()}` : ''}.` };
+}
+
+/** Puts back an update's backup, on the version already running (after a rollback by hand). */
+async function restoreOnly(deps: Omit<UpgradeDeps, 'waitForIdle'> & { waitForIdle(): Promise<boolean> }, entry: UpdateRecord): Promise<{ ok: boolean; why: string }> {
+  const { home } = deps;
+  if (!deps.service && deps.daemonOutsideService?.()) {
+    return { ok: false, why: 'polyphemus is running in a terminal (poly serve). Stop it first, then run this again, so your data isn’t replaced under it.' };
+  }
+  if (!(await deps.waitForIdle())) return { ok: false, why: 'Sessions were still working, so nothing was changed. Try again when they’ve finished, or with --now.' };
+  const failed = tryEach([
+    ['stopping the service', () => deps.service?.stop()],
+    ['putting your data back', () => restore(home, entry.backup)],
+    ['starting the service', () => deps.service?.start()],
+  ]);
+  if (failed.length) return { ok: false, why: `Putting your data back didn’t fully work: ${failed.join('; ')} failed.` };
+  const why = deps.service ? await deps.unhealthy() : undefined;
+  record(home, { from: entry.to, to: entry.to, at: Date.now(), backup: entry.backup, outcome: 'restored' });
+  if (why) return { ok: false, why: `Your data from before ${entry.from} is back, but the service didn’t come up (${why}).` };
+  return { ok: true, why: `Your data from before the update to ${entry.from} is back.` };
 }
 
 /** How a result reads in the terminal. */

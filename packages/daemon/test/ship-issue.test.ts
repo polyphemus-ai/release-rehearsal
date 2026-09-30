@@ -293,6 +293,47 @@ describe('ship-issue', () => {
     expect(checks.evidence.map((e: { label: string }) => e.label)).toContain('npm run test');
   }, 60_000);
 
+  it('asks again after a restart before it merges: an answer from before the restart doesn’t count', async () => {
+    // A merge is the one step that can't be taken back; a restart while it waits mustn't carry a
+    // yes, or a missing one, across (2026-09-28).
+    const builder = new Sessions('openai', (prompt) => {
+      if (prompt.includes('Plan the change for issue #12')) return [call('submit', { summary: 'Add feature.txt.', steps: ['Write it'], proof: [] }), say('Submitted.')];
+      return [call('bash', { command: `printf 'shipped\\n' > feature.txt && git add -A && git commit -qm "Ship it"` }), call('submit', { changed: 'done' }), say('Submitted.')];
+    });
+    const reviewer = new Sessions('anthropic', () => [call('submit', { verdict: 'approve', summary: 'Fine.' }), say('Submitted.')]);
+    let { me, cookie } = await start(builder, reviewer);
+    const project = await ledger(me);
+    await grantRoles(me, cookie, project.slug, [
+      ['builder', 55],
+      ['reviewer', 77],
+    ]);
+    const started = await me('/api/workflows/ship-issue/start', { project: project.slug, input: { issue: 12 }, yolo: true });
+    const runOf = async () => (await me(`/api/sessions/${started.data.id}`)).data.work.runs[0];
+    const gateNamed = async (title: string) => {
+      await until(async () => (await runOf())?.steps.some((st: { title: string; status: string }) => st.title === title && st.status === 'waiting'), `the gate "${title}"`);
+      return (await me('/api/state')).data.questions.find((x: { kind: string; status?: string }) => x.kind === 'gate');
+    };
+    await me(`/api/questions/${(await gateNamed('Run these checks?')).id}`, { answer: 'approve' });
+    const before = await gateNamed('Merge?');
+
+    // Polyphemus stops while the merge question waits, and starts again.
+    await daemon.close();
+    polyphemus.close();
+    ({ me, cookie } = await start(builder, reviewer));
+    expect(gh.seen.merges).toEqual([]);
+    // The question from before can't be answered into a merge.
+    await me(`/api/questions/${before.id}`, { answer: 'approve' });
+    await new Promise((r) => setTimeout(r, 500));
+    expect(gh.seen.merges).toEqual([]);
+    // The run carries on to the same gate and asks afresh; only that yes merges.
+    const again = await gateNamed('Merge?');
+    expect(again.id).not.toBe(before.id);
+    expect(gh.seen.merges).toEqual([]);
+    await me(`/api/questions/${again.id}`, { answer: 'approve' });
+    await until(async () => gh.seen.merges.length > 0 || undefined, 'the merge');
+    expect(gh.seen.merges.map((m) => m.number)).toEqual([31]);
+  }, 90_000);
+
   it.skipIf(!findChrome())('opens the pages the plan names at phone and desktop widths: a page that throws sends the round back, and the reviewer and you get the pictures', async () => {
     const builder = new Sessions('openai', (prompt) => {
       if (prompt.includes('Plan the change for issue #12')) return [call('submit', { summary: 'A home page.', steps: ['Write index.html'], pages: ['/'] }), say('Submitted.')];

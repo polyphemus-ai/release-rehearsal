@@ -1742,7 +1742,7 @@ export class SessionRuntime {
     if (needsGateway) this.gateway ??= await startConnectionGateway(this.gatewayTools());
     if (reachable.length > 0 && !gatewayCli && !this.unreachableNoted) {
       this.unreachableNoted = true;
-      this.notice(`${reachable.map((r) => r.name).join(', ')} ${reachable.length === 1 ? 'is' : 'are'} granted here, but ${CLI_NAMES[adapter ?? ''] ?? provider.id} can't use connections yet. Switch to Claude Code, Codex or an API model to use ${reachable.length === 1 ? 'it' : 'them'}.`);
+      this.notice(`${reachable.map((r) => r.name).join(', ')} ${reachable.length === 1 ? 'is' : 'are'} granted here, but ${CLI_NAMES[adapter ?? ''] ?? provider.id} can’t use connections${grokWorker ? ' while it’s isolated' : ''} yet. Switch to Claude Code or an API model to use ${reachable.length === 1 ? 'it' : 'them'}${grokWorker ? '' : ', or Codex'}.`);
     }
 
     // Codex's sandbox may not be able to start on this computer at all, and then the agent can only

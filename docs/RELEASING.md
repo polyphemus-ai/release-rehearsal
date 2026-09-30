@@ -18,7 +18,7 @@ one version, and are bundled into the published `polyphemus` by `scripts/build.m
 
 1. With a change someone using Polyphemus would notice, run `pnpm changeset`: pick patch, minor or
    major, and write the changelog line in plain words.
-2. Merge to `main`. CI runs on Linux and macOS: typecheck, tests, the app smoke check,
+2. Merge to `main`. CI runs on Linux and macOS: typecheck, tests (and on Linux, the app smoke check),
    `scripts/pack-check.mjs` (the package as published, installed into an empty folder and run),
    `scripts/upgrade-check.mjs` (installed with install.sh, updated, a bad update refused, rolled back),
    and the install script on clean Ubuntu, Debian and Fedora machines.
@@ -42,7 +42,10 @@ the release, so it's always a person's click.
    anything), publishes to npm with provenance through trusted publishing (no npm token lives in the
    repository), waits until npm serves the version (a minute or two), tags `vX.Y.Z`, and makes the
    GitHub release with both install scripts and the notes from `scripts/release-notes.mjs`.
-4. **Check it as a user would:** `sh scripts/release-check.sh polyphemus-ai/polyphemus polyphemus
+4. **Before anyone is told:** the README's own install lines work as written —
+   `curl -fsSI https://polyphemus.ai/install.sh` and `…/install.ps1` end at the GitHub release's
+   files (the site's redirect), and `npm view polyphemus version` is the new version.
+5. **Check it as a user would:** `sh scripts/release-check.sh polyphemus-ai/polyphemus polyphemus
    <previous version> [<a beta>]` — on a clean Ubuntu in Docker, the one-line install from the GitHub
    release gets the new version, and `poly update` brings the older one (and the beta) up to it. On
    npmjs.com the version shows a provenance badge; on GitHub the release is Latest (or Pre-release, for

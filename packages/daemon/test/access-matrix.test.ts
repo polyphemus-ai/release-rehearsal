@@ -100,6 +100,13 @@ const ROUTES: Route[] = [
   { method: 'POST', path: '/api/devices/{dev}/revoke', body: {}, allow: OWNER },
   { method: 'POST', path: '/api/skills/install', body: { id: 'nope/nothing', to: 'library' }, allow: OWNER },
   { method: 'POST', path: '/api/skills/remove', body: { name: 'nothing', from: 'library' }, allow: OWNER },
+  // Plugins fetch from the network and change the whole install: the owner's, every one.
+  { method: 'GET', path: '/api/connections/registry?q=none', allow: OWNER, safe: true },
+  { method: 'GET', path: '/api/plugins', allow: OWNER, safe: true },
+  { method: 'GET', path: '/api/plugins/browse?from=none', allow: OWNER, safe: true },
+  { method: 'POST', path: '/api/plugins/plan', body: { ref: 'nope', target: 'library' }, allow: OWNER },
+  { method: 'POST', path: '/api/plugins/install', body: { ref: 'nope', target: 'library' }, allow: OWNER },
+  { method: 'POST', path: '/api/plugins/remove', body: { name: 'nothing', target: 'library' }, allow: OWNER },
   { method: 'POST', path: '/api/agents', body: { name: 'newbie' }, allow: OWNER },
   { method: 'POST', path: '/api/agents/{agent}', body: { description: 'changed' }, allow: OWNER },
   { method: 'GET', path: '/api/agents/{agent}/dependents', allow: OWNER, safe: true },

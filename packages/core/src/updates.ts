@@ -35,19 +35,38 @@ export const currentVersion = (): string => (JSON.parse(readFileSync(assetPath('
  */
 export const isVersion = (v: string): boolean => /^\d+\.\d+\.\d+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$/.test(v);
 
-/** -1, 0 or 1: semantic versions, where a prerelease comes before its release. */
+/**
+ * -1, 0 or 1: semantic versions, where a prerelease comes before its release. Prerelease parts are
+ * compared one by one, numbers as numbers: compared as one string, beta.9 came after beta.10, and a
+ * beta install refused the next beta (Codex review, 2026-09-24).
+ */
 export function compareVersions(a: string, b: string): number {
   const parse = (v: string) => {
-    const [core, pre] = v.replace(/^v/, '').split('-', 2);
-    return { nums: (core ?? '').split('.').map((n) => Number.parseInt(n, 10) || 0), pre };
+    const bare = v.replace(/^v/, '');
+    const dash = bare.indexOf('-');
+    const core = dash < 0 ? bare : bare.slice(0, dash);
+    const pre = dash < 0 ? undefined : bare.slice(dash + 1);
+    return { nums: core.split('.').map((n) => Number.parseInt(n, 10) || 0), pre: pre?.split('.') };
   };
   const x = parse(a);
   const y = parse(b);
   for (let i = 0; i < 3; i++) if ((x.nums[i] ?? 0) !== (y.nums[i] ?? 0)) return (x.nums[i] ?? 0) < (y.nums[i] ?? 0) ? -1 : 1;
-  if (x.pre === y.pre) return 0;
-  if (x.pre === undefined) return 1;
-  if (y.pre === undefined) return -1;
-  return x.pre < y.pre ? -1 : 1;
+  if (!x.pre && !y.pre) return 0;
+  if (!x.pre) return 1;
+  if (!y.pre) return -1;
+  for (let i = 0; i < Math.max(x.pre.length, y.pre.length); i++) {
+    const p = x.pre[i];
+    const q = y.pre[i];
+    if (p === undefined) return -1; // fewer parts, all equal so far: comes first
+    if (q === undefined) return 1;
+    if (p === q) continue;
+    const pn = /^\d+$/.test(p);
+    const qn = /^\d+$/.test(q);
+    if (pn && qn) return Number(p) < Number(q) ? -1 : 1;
+    if (pn !== qn) return pn ? -1 : 1; // numbers come before words
+    return p < q ? -1 : 1;
+  }
+  return 0;
 }
 
 /** What's known, without asking anyone: the last answer, from the cache, if it was for this channel. */

@@ -9,7 +9,7 @@ built, phase by phase, is in [roadmap-history.md](roadmap-history.md). Reviewed 
 
 **An open-source agent harness with an experience like Grok Bot, that lets you use any provider or
 model — bring your own tokens — and understand autonomous work without managing its sessions.**
-The owner, 2026-09-12 (it began as an alternative to OpenClaw).
+The maintainer, 2026-09-12 (it began as an alternative to OpenClaw).
 
 What that pins down:
 
@@ -39,9 +39,20 @@ evidence there is, and what needs a decision — from your phone?**
 | **Agents that do more** | An agent's own computer (watch it, take it over, teach it by showing), skills of its own and a library of 800, memory that carries across projects, files in and out of threads, people and agents in conversations | ✅ 2026-09-17 to 19 |
 | **Worker isolation** | Agents' commands and files in a container with only what was granted; the vendor CLIs' tools sent there; a level the owner picks | ✅ 2026-09-16 |
 | **Reviewed from outside** | Independent review passes on 2026-09-19 and 20. There were three security passes, then passes on the new features, the workflow engine, connections and secrets, and the app and the daemon's surface. Every finding reproduced at the time is fixed with a test, or is listed under Backlog as a deliberate call | ✅ |
-| **Ready to publish** | One npm package, releases, update checks, macOS, a repository with nothing private, docs for contributors | **Now** — built; publishing waits on accounts |
+| **Ready to publish** | One npm package, releases, update checks, macOS, a repository with nothing private, docs for contributors | **Now** — built and rehearsed; publishing waits on the release go-ahead |
 | **Ready for other people** | Multiplayer to a public standard: release tests for who can do what | **Now**, alongside publishing |
 | **It gets better at it** | Memory that consolidates, the steward, the store, a workflow catalogue | Later |
+
+## ~~Now, before publishing: plugins and one-tap connections~~ built 2026-09-29
+
+Polyphemus installs Cursor's and Claude Code's plugins, and connects to services with nothing to
+configure ([plugins.md](plugins.md)): both formats read and fetched from their marketplaces
+(every one of their 400 or so reads cleanly); `poly plugins` and a Plugins screen under Team that
+show what a plugin adds before it adds anything; 30 more services in the catalogue, and
+`scripts/connections-check.mjs`, which found Polyphemus refusing metadata labelled as a download
+(fixed). Connections became a directory with the services' logos and the open MCP Registry
+beside the catalogue, with Skills and Plugins a tap away. Still to come: client ID metadata documents; a marketplace the owner adds; updates when a
+marketplace moves a plugin on; an agent's own read-only mode, which a plugin can ask for.
 
 ## Now: publish
 
@@ -67,10 +78,10 @@ Left, in order:
    that runs an update is the old one): versions beside each other, the new one checked against a copy
    of the data, a backup, a watched restart that goes back on its own, `poly rollback`, and data that
    only ever adds ([upgrades.md](upgrades.md)).
-4. **The first release** (waits on the owner's go): replace the changesets with one "The first
+4. **The first release** (waits on the maintainer's go-ahead): replace the changesets with one "The first
    release" at 0.0.0 → 0.1.0; `scripts/export-public.mjs --commit` into `polyphemus-ai/polyphemus`, with
-   its About; the trusted publisher on npm (the owner); approve and merge the Version packages pull
-   request (the owner); `scripts/release-check.sh`; polyphemus.ai/install.sh and install.ps1 redirected
+   its About; the trusted publisher on npm (the maintainer); approve and merge the Version packages pull
+   request (the maintainer); `scripts/release-check.sh`; polyphemus.ai/install.sh and install.ps1 redirected
    to the GitHub release. Still to come after it: the desktop apps and the other install doors from
    the install decision (DESIGN.md, 2026-09-21).
 5. **Development moves to the public repository** (right after 0.1.0): the private copy is archived,
@@ -101,9 +112,40 @@ found gaps route by route, which is the case for proving access as a whole rathe
    judgement calls are under Backlog. Connections and secrets, and the app and the daemon's surface,
    were reviewed the same day ([reviews/](../reviews/README.md)).
 
+## Next: a large repository, day to day
+
+Before Polyphemus is where a large private monorepo is built every day (several apps, hundreds of
+test files, its own GitHub App identities and merge rules, reviewed by another vendor), measured
+against one such repository on 2026-09-28. What already holds: review by another vendor's model, a
+merge only with a person's yes (asked again after a restart), paid fallback off unless turned on,
+and AGENTS.md handed to every agent. What doesn't yet, in order:
+
+1. **Running at "On this computer" works today**, with the repository's own rules and tools: its
+   AGENTS.md reaches Claude Code and Codex, and threads, questions and review by another vendor come
+   from Polyphemus. That's the way to start.
+2. **Isolated workers for a repository like that:**
+   - its tests start Postgres and Redis containers of their own (no Docker socket in a worker), so a
+     worker needs services beside it, or a project setting for which checks run where;
+   - install and build reach npm, Prisma's engines and Google Fonts: network presets for them;
+   - mounting the project folder brings its hundreds of retained worktrees and private data: a
+     project setting for what is mounted;
+   - heavy checks have run a machine out of memory: a per-project limit on checks at once.
+3. **A repository's own way to GitHub.** Some keep per-role GitHub App identities behind their own
+   broker, with a merge gate that requires their reviewer. The ship workflow brings Polyphemus's own
+   identities; it needs to be able to use the repository's instead, and to keep its conventions
+   (worktrees under a folder it names, review reports saved in the repository).
+4. **Isolated Codex and Grok get connections and Polyphemus's tools** through the gateway, as
+   Claude Code and API models do.
+
 ## Next
 
-Recommended order, to confirm with the owner:
+**More one-tap connections:** services that take only apps their vendor approved (HubSpot, Zoom,
+Google Calendar, BigQuery, Shopify, DocuSign, X Ads, X Money) need Polyphemus registered with each;
+five take a key (Brevo, Hunter, Similarweb, Smartsheet, Wrike); Microsoft's five publish no rules to
+check. Google Docs, Sheets and Slides in Cursor's list go through Cursor's own servers, so they're
+not added.
+
+Recommended order, to be confirmed:
 
 1. **Browser use, next steps** ([computer-use.md](computer-use.md)). Shipping opens the pages it
    changed, agents drive a browser through the Browser connection, models see the pictures tools
@@ -208,7 +250,7 @@ related work; anything bigger moves up into Next.
 - A memory budget you can see, with an undo journal.
 - Busy means wait and resume, never fail, when an agent is busy in another thread.
 - A webhook receiver of Polyphemus's own, separate from the app's API.
-- **Other ways in than Tailscale** (banked 2026-09-23, the owner): a computer with a static
+- **Other ways in than Tailscale** (banked 2026-09-23): a computer with a static
   address, or a server (an EC2 box, say) with a domain pointed at it. Tailscale stays optional
   today (`POLYPHEMUS_TAILSCALE=off`), but it's the only way a phone reaches Polyphemus, and the
   rule that the daemon listens only on 127.0.0.1 and the Tailscale address exists because a tailnet
@@ -233,7 +275,7 @@ related work; anything bigger moves up into Next.
 - Nothing automated watches how the app *behaves*, only that every screen draws: `smoke.mjs` loads
   each route in a real browser and checks for errors and missing text. Tapping a message in the
   flow, then sending a message, dragged the thread back to the tapped message every time it drew —
-  found by the owner, not by a test (2026-09-20). Driving the app (tap, type, send, and assert what
+  found by a person using it, not by a test (2026-09-20). Driving the app (tap, type, send, and assert what
   moved) needs a harness smoke doesn't have.
 
 **From the review of the app and the daemon's surface** (2026-09-20)
@@ -438,7 +480,7 @@ Side quests and follow-ups since the phases in the history, so they aren't lost:
   turn Codex's sandbox off on its card (off by default, said plainly, read-only work keeps it), and
   set how long a quota error keeps a provider out (`routing.quota_retry_minutes`, on Defaults & fallback).
 - **SuperGrok usage from xAI** (2026-09-16): the Grok CLI's plan usage, from xAI's billing endpoint with
-  the CLI's own sign-in (the owner's one exception to never using a subscription token outside its CLI),
+  the CLI's own sign-in (the maintainer's one exception to never using a subscription token outside its CLI),
   every 5 minutes; a reading with room ends an earlier quota error straight away.
 
 - **Who's here, and who answers** (2026-09-16, from a real group thread that went wrong): who came

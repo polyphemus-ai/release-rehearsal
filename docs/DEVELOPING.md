@@ -9,11 +9,14 @@ Everything Polyphemus keeps — config, sessions, the vault, memory — is under
 (default `~/.polyphemus`). Point it at a temp folder for anything experimental:
 
 ```bash
-export POLYPHEMUS_HOME=$(mktemp -d)
+export POLYPHEMUS_HOME=$(mktemp -d) POLYPHEMUS_PORT=3999 POLYPHEMUS_TAILSCALE=off
+echo $POLYPHEMUS_HOME   # the second terminal needs it
 pnpm poly config set projects_root "\"$POLYPHEMUS_HOME/projects\""   # or new projects land in your real ~/projects
-pnpm polyphemus                 # the CLI; the first run writes a config and asks for a default model
-POLYPHEMUS_PORT=3999 POLYPHEMUS_TAILSCALE=off pnpm poly serve   # the daemon and app, this computer only
-pnpm poly pair            # in another terminal: a one-time code to open the app with
+pnpm poly         # the CLI; the first run writes a config and asks for a default model
+pnpm poly serve   # the daemon and app, this computer only
+# In a second terminal, the same three settings, then a one-time code to open the app with:
+#   export POLYPHEMUS_HOME=<the folder above> POLYPHEMUS_PORT=3999 POLYPHEMUS_TAILSCALE=off
+#   pnpm poly pair
 ```
 
 The tests that put agents in a real worker fail, loudly, on a machine with no Docker or Podman rather

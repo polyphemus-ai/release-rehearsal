@@ -31,6 +31,8 @@ export const SKILL_SOURCES: readonly SkillSource[] = [
   { id: 'microsoft', name: 'Microsoft', repo: 'microsoft/skills', branch: 'main' },
   { id: 'github', name: 'GitHub (awesome-copilot)', repo: 'github/awesome-copilot', branch: 'main' },
   { id: 'trailofbits', name: 'Trail of Bits', repo: 'trailofbits/skills', branch: 'main' },
+  // Cursor's plugins: each carries its skills under <plugin>/skills/, with its own MIT licence (2026-09-29).
+  { id: 'cursor', name: 'Cursor', repo: 'cursor/plugins', branch: 'main' },
 ];
 
 export interface CatalogueSkill {

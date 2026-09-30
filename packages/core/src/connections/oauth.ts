@@ -52,8 +52,13 @@ export const oauthSecretName = (connection: string) => `connection/${connection}
 async function getJson(url: string): Promise<Record<string, unknown> | undefined> {
   try {
     const res = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(10_000) });
-    if (!res.ok || !(res.headers.get('content-type') ?? '').includes('json')) return undefined;
-    return (await res.json()) as Record<string, unknown>;
+    if (!res.ok) return undefined;
+    // Metadata at a well-known address is JSON whatever its label says: Semrush's authorization
+    // server sends it as application/octet-stream (2026-09-29). Taken if it parses as an object, and small.
+    const text = await res.text();
+    if (text.length > 256 * 1024) return undefined;
+    const value = JSON.parse(text) as unknown;
+    return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
   } catch {
     return undefined;
   }

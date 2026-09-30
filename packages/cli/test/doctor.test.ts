@@ -45,7 +45,7 @@ describe('poly doctor', () => {
     expect(clis[0]!.fix!.join('\n')).toContain('codex login');
     // Everything else is worth a look, not a blocker.
     expect(found.find((f) => f.what === 'git isn’t installed, and projects and workflows need it')?.state).toBe('warn');
-    expect(found.find((f) => f.what === '0.1.0, not running')?.fix).toEqual(['poly start — runs it in the background and opens setup in your browser']);
+    expect(found.find((f) => f.what === '0.1.0, not running')?.fix).toEqual(['poly start — runs it in the background and opens setup in your browser', 'Without a service manager (a container, a root shell, some servers): poly serve in its own terminal, then poly start']);
     expect(found.find((f) => f.what === 'No phone paired yet')?.fix).toEqual(['poly pair']);
   });
 

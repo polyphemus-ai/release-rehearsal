@@ -73,3 +73,7 @@ export * from './default-agent.js';
 export { assetPath, bundled } from './assets.js';
 export * from './updates.js';
 export * from './connections/github.js';
+export * from './plugins/read.js';
+export * from './plugins/sources.js';
+export * from './plugins/install.js';
+export * from './connections/registry.js';
