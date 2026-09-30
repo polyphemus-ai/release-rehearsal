@@ -43,6 +43,15 @@ describe('files a connection hands back', () => {
     expect(readFileSync(join(root, 'attachments', 'Health Connect (2).zip'), 'latin1')).toBe('second');
   });
 
+  it('names the file by the folder the thread knows, when that folder is reached through a link', () => {
+    // macOS: temporary folders are under /var, a link to /private/var.
+    const { dir, root } = project();
+    const linked = join(dir, 'linked');
+    symlinkSync(root, linked);
+    expect(saveAttachment(file('a.zip', 'x'), { cwd: linked, root: linked })).toEqual({ path: join(linked, 'attachments', 'a.zip') });
+    expect(readFileSync(join(root, 'attachments', 'a.zip'), 'latin1')).toBe('x');
+  });
+
   it('can’t be sent anywhere else by its name', () => {
     const { dir, root } = project();
     for (const name of ['../../outside.zip', '/tmp/outside.zip', '..\\outside.zip', '..']) {

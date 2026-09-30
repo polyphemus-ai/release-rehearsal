@@ -1,5 +1,5 @@
 import { closeSync, existsSync, lstatSync, mkdirSync, openSync, realpathSync, writeSync } from 'node:fs';
-import { extname, join, relative, isAbsolute } from 'node:path';
+import { basename, extname, join, relative, isAbsolute } from 'node:path';
 import { MAX_RESOURCE_BYTES, type McpFile } from './mcp-client.js';
 
 // Files a connection hands back (download_file on Google Drive), saved where the calling thread works
@@ -75,7 +75,9 @@ export function saveAttachment(file: McpFile, where: { cwd?: string; root?: stri
     } finally {
       closeSync(fd);
     }
-    return { path };
+    // Checked and written by its real path, but named by the folder the thread knows: on macOS the
+    // temporary folders are behind a link (/var → /private/var), and the agent should recognise it.
+    return { path: join(where.cwd, ATTACHMENTS, basename(path)) };
   }
   return { why: `there are already 999 files called ${name} in ${ATTACHMENTS}` };
 }
